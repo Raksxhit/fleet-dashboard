@@ -36,21 +36,15 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   
-  /* REMOVE NUMBER INPUT ARROWS (SPINNERS) EVERYWHERE */
+  /* REMOVE NUMBER INPUT ARROWS */
   input::-webkit-outer-spin-button,
-  input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-  input[type=number] {
-    -moz-appearance: textfield; /* Firefox */
-  }
+  input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
 
   body { 
     background-color: var(--bg-base);
-    background-image: 
-      radial-gradient(circle at 10% 20%, rgba(14, 165, 233, 0.04) 0%, transparent 40%),
-      radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 40%);
+    background-image: radial-gradient(circle at 10% 20%, rgba(14, 165, 233, 0.04) 0%, transparent 40%),
+                      radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 40%);
     color: var(--text-primary); 
     font-family: var(--font-sans); 
     min-height: 100vh;
@@ -59,10 +53,17 @@
 
   .app-container { padding: 24px; display: none; max-width: 1100px; margin: 0 auto; }
 
+  /* Loading Screen */
+  #initial-loader {
+    position: fixed; inset: 0; background: var(--bg-base); z-index: 10000;
+    display: none; align-items: center; justify-content: center; flex-direction: column;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   /* Login Screen */
   #login-screen {
     position: fixed; inset: 0; background: var(--bg-base); z-index: 9999;
-    display: flex; align-items: center; justify-content: center;
+    display: none; align-items: center; justify-content: center;
   }
   .login-card { 
     background: var(--bg-surface); border: 1px solid var(--border-light); padding: 48px 40px; 
@@ -75,324 +76,130 @@
   .login-card input { 
     width: 100%; padding: 16px; margin-bottom: 20px; border-radius: 12px; border: 1px solid var(--border-strong); 
     background: rgba(255,255,255,0.03); color: white; text-align: center; font-size: 18px; outline: none; transition: 0.2s; letter-spacing: 2px;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
   }
-  .login-card input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 4px var(--accent-blue-glow), inset 0 2px 4px rgba(0,0,0,0.2); }
+  .login-card input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 4px var(--accent-blue-glow); }
   
-  /* Error Shake Animation */
-  @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    20%, 60% { transform: translateX(-6px); }
-    40%, 80% { transform: translateX(6px); }
-  }
-  .error-shake {
-    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
-    border-color: var(--accent-red) !important;
-    background-color: rgba(239, 68, 68, 0.1) !important;
-    color: #fca5a5 !important;
-    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2), inset 0 2px 4px rgba(0,0,0,0.2) !important;
-  }
+  @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+  .error-shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; border-color: var(--accent-red) !important; background-color: rgba(239, 68, 68, 0.1) !important; color: #fca5a5 !important; }
 
-  .login-card button { 
-    width: 100%; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 600; border: none; 
-    background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; cursor: pointer; transition: 0.3s; 
-  }
+  .login-card button { width: 100%; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 600; border: none; background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; cursor: pointer; transition: 0.3s; }
   .login-card button:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px var(--accent-blue-glow); }
 
-  /* Top Navigation */
-  .top-header { 
-    display: flex; justify-content: space-between; align-items: center; 
-    margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid var(--border-light); 
-    position: relative; z-index: 100;
-  }
+  /* Top Navigation & Realtime Status */
+  .top-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid var(--border-light); position: relative; z-index: 100; }
   .profile-group { display: flex; align-items: center; gap: 12px; }
   
-  /* NEON CLOUD SYNC ANIMATIONS */
-  .vehicle-badge { 
-    display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; 
-    background: rgba(14, 165, 233, 0.1); border: 2px solid rgba(14, 165, 233, 0.2); 
-    border-radius: 12px; color: var(--accent-blue);
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); position: relative;
-  }
-  
-  /* Yellow Syncing State */
-  .sync-updating {
-    border-color: var(--accent-amber) !important;
-    color: var(--accent-amber) !important;
-    animation: neonPulseYellow 1s infinite alternate;
-  }
-  
-  /* Green Success State */
-  .sync-success {
-    border-color: var(--accent-green) !important;
-    color: var(--accent-green) !important;
-    box-shadow: 0 0 15px rgba(16, 185, 129, 0.6), inset 0 0 10px rgba(16, 185, 129, 0.2) !important;
-  }
+  /* Connection Indicator Dot */
+  .status-dot-container { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: rgba(0,0,0,0.2); padding: 6px 12px; border-radius: 99px; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background-color: var(--accent-green); animation: blink 2s infinite; box-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
+  .status-dot.disconnected { background-color: var(--accent-red); box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-  @keyframes neonPulseYellow {
-    0% { box-shadow: 0 0 5px rgba(245, 158, 11, 0.4), inset 0 0 5px rgba(245, 158, 11, 0.1); }
-    100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.8), inset 0 0 10px rgba(245, 158, 11, 0.3); }
-  }
-  
-  /* Custom Vehicle Dropdown */
+  .vehicle-badge { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: rgba(14, 165, 233, 0.1); border: 2px solid rgba(14, 165, 233, 0.2); border-radius: 12px; color: var(--accent-blue); transition: all 0.4s; }
+  .sync-updating { border-color: var(--accent-amber) !important; color: var(--accent-amber) !important; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+
   .custom-dropdown { position: relative; display: inline-block; min-width: 200px; }
-  .custom-dropdown-selected {
-    background-color: var(--bg-surface); color: white; border: 1px solid var(--border-strong);
-    padding: 10px 16px; border-radius: 10px; font-size: 15px; font-weight: 500; cursor: pointer;
-    display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: 0.2s;
-  }
-  .custom-dropdown-selected:hover { border-color: var(--accent-blue); background-color: var(--bg-surface-hover); }
-  .custom-dropdown-options {
-    display: none; position: absolute; top: 100%; left: 0; right: 0; margin-top: 8px;
-    background-color: #0f172a; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px;
-    z-index: 2147483647; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.8), 0 25px 50px -12px rgba(0, 0, 0, 0.9);
-    overflow: hidden;
-  }
-  .custom-dropdown-options.show { display: block; animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; transform-origin: top center; }
-  .custom-dropdown-option {
-    padding: 12px 16px; font-size: 14px; color: var(--text-primary); cursor: pointer; transition: 0.2s;
-    border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 12px; font-weight: 500;
-  }
-  .custom-dropdown-option i { color: var(--text-secondary); font-size: 18px; transition: 0.2s; }
-  .custom-dropdown-option:last-child { border-bottom: none; }
-  .custom-dropdown-option:hover { background: var(--bg-surface-hover); color: var(--accent-blue); }
-  .custom-dropdown-option:hover i { color: var(--accent-blue); }
-  .custom-dropdown-option.active { color: var(--accent-blue); background: rgba(14, 165, 233, 0.05); }
-  .custom-dropdown-option.active i { color: var(--accent-blue); }
+  .custom-dropdown-selected { background-color: var(--bg-surface); color: white; border: 1px solid var(--border-strong); padding: 10px 16px; border-radius: 10px; font-size: 15px; font-weight: 500; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: 0.2s; }
+  .custom-dropdown-selected:hover { border-color: var(--accent-blue); }
+  .custom-dropdown-options { display: none; position: absolute; top: 100%; left: 0; right: 0; margin-top: 8px; background-color: #0f172a; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; z-index: 2147483647; overflow: hidden; }
+  .custom-dropdown-options.show { display: block; animation: scaleIn 0.2s forwards; }
+  .custom-dropdown-option { padding: 12px 16px; font-size: 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 12px; font-weight: 500; }
+  .custom-dropdown-option:hover, .custom-dropdown-option.active { background: var(--bg-surface-hover); color: var(--accent-blue); }
 
-  .icon-btn { 
-    background: var(--bg-surface); border: 1px solid var(--border-strong); color: var(--text-primary); 
-    padding: 10px 16px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; transition: 0.2s; 
-  }
-  .icon-btn i { font-size: 18px; color: var(--text-secondary); transition: 0.2s; }
+  .icon-btn { background: var(--bg-surface); border: 1px solid var(--border-strong); color: var(--text-primary); padding: 10px 16px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500; transition: 0.2s; }
   .icon-btn:hover { background: var(--bg-surface-hover); border-color: rgba(255,255,255,0.3); }
-  .icon-btn:hover i { color: var(--text-primary); }
 
-  /* Animated Logout Button */
-  .logout-btn {
-    background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: var(--accent-red);
-    width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); outline: none;
-  }
-  .logout-btn i { font-size: 22px; transition: transform 0.3s; }
-  .logout-btn:hover {
-    background: var(--accent-red); color: white;
-    box-shadow: 0 8px 20px -6px rgba(239, 68, 68, 0.6); transform: translateY(-2px);
-  }
-  .logout-btn:active { transform: scale(0.95); }
+  .logout-btn { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: var(--accent-red); width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; }
+  .logout-btn:hover { background: var(--accent-red); color: white; transform: translateY(-2px); }
 
-  /* Options Dropdown */
   .dropdown { position: relative; display: inline-block; }
-  .dropdown-content { 
-    display: none; position: absolute; right: 0; top: 100%; margin-top: 10px;
-    background-color: #0f172a !important; 
-    border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; min-width: 240px; 
-    z-index: 2147483647; 
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.8), 0 4px 6px -4px rgba(0, 0, 0, 0.8), 0 25px 50px -12px rgba(0, 0, 0, 0.9);
-    padding: 8px;
-  }
-  .dropdown-content.show { display: block; animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; transform-origin: top right; }
-  .dropdown-content a { 
-    color: var(--text-primary); padding: 12px 16px; text-decoration: none; display: flex; align-items: center; gap: 12px; font-size: 14px; border-radius: 8px; transition: 0.2s; cursor: pointer; font-weight: 500;
-  }
-  .dropdown-content a i { color: var(--text-secondary); font-size: 18px; }
+  .dropdown-content { display: none; position: absolute; right: 0; top: 100%; margin-top: 10px; background-color: #0f172a !important; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; min-width: 240px; z-index: 2147483647; padding: 8px; }
+  .dropdown-content.show { display: block; }
+  .dropdown-content a { color: var(--text-primary); padding: 12px 16px; text-decoration: none; display: flex; align-items: center; gap: 12px; font-size: 14px; border-radius: 8px; cursor: pointer; }
   .dropdown-content a:hover { background: var(--bg-surface-hover); color: var(--accent-blue); }
-  .dropdown-content a:hover i { color: var(--accent-blue); }
-  
-  /* Animations */
+
   @keyframes fadeUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-  @keyframes slideInRight { from { opacity: 0; transform: translateX(-15px); } to { opacity: 1; transform: translateX(0); } }
-  @keyframes pulseSubtle { 0% { opacity: 0.3; transform: scale(0.98); } 50% { opacity: 0.7; transform: scale(1); } 100% { opacity: 0.3; transform: scale(0.98); } }
-  @keyframes fadeOutRight { to { opacity: 0; transform: translateX(20px); } }
   
   .animate-in { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
   .delay-1 { animation-delay: 0.05s; } .delay-2 { animation-delay: 0.1s; } .delay-3 { animation-delay: 0.15s; }
-  .row-animate { animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
 
   /* Navigation Tabs */
-  .top-tabs { 
-    display: flex; gap: 8px; margin-bottom: 32px; overflow-x: auto; padding: 6px; 
-    background: rgba(0,0,0,0.2); border-radius: 14px; width: 100%; border: 1px solid var(--border-light);
-    -ms-overflow-style: none; scrollbar-width: none;
-  }
-  .top-tabs::-webkit-scrollbar { display: none; }
-  
-  .top-tab { 
-    font-size: 14px; font-weight: 500; padding: 10px 20px; border: none; background: transparent; 
-    color: var(--text-secondary); cursor: pointer; border-radius: 10px; transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
-    white-space: nowrap; display: flex; align-items: center; gap: 8px; flex: 1; justify-content: center;
-  }
-  .top-tab i { font-size: 18px; }
-  .top-tab:hover { color: var(--text-primary); }
-  .top-tab.active { background: var(--bg-surface-hover); color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-  .panel { display: none; } .panel.active { display: block; animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+  .top-tabs { display: flex; gap: 8px; margin-bottom: 32px; overflow-x: auto; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 14px; border: 1px solid var(--border-light); scrollbar-width: none; }
+  .top-tab { font-size: 14px; font-weight: 500; padding: 10px 20px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-radius: 10px; transition: 0.3s; flex: 1; display: flex; align-items: center; gap: 8px; justify-content: center; white-space: nowrap; }
+  .top-tab.active { background: var(--bg-surface-hover); color: white; }
+  .panel { display: none; } .panel.active { display: block; animation: fadeUp 0.4s; }
 
   /* Action Bar */
   .action-bar { display: flex; gap: 16px; margin-bottom: 24px; }
-  .btn { 
-    display: inline-flex; align-items: center; gap: 8px; padding: 14px 24px; border-radius: 12px; 
-    font-weight: 600; font-size: 14px; border: none; cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); color: #fff; 
-  }
-  .btn i { font-size: 18px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; border: none; cursor: pointer; transition: 0.3s; color: #fff; }
   .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
-  .btn:active { transform: translateY(0); }
-  .btn-fuel { background: linear-gradient(135deg, #0ea5e9, #0284c7); box-shadow: 0 8px 20px -6px var(--accent-blue-glow); }
-  .btn-reserve { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 8px 20px -6px var(--accent-amber-glow); color: #fff; }
-  .btn-spend { background: linear-gradient(135deg, #8b5cf6, #6d28d9); box-shadow: 0 8px 20px -6px var(--accent-purple-glow); }
-  .btn-oil { background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 8px 20px -6px rgba(239, 68, 68, 0.4); }
+  .btn-fuel { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
+  .btn-reserve { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .btn-spend { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+  .btn-oil { background: linear-gradient(135deg, #ef4444, #b91c1c); }
 
   /* Metrics & Cards */
   .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
-  .metric { 
-    background: var(--bg-surface); border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--border-light); 
-    transition: 0.3s; position: relative; overflow: hidden;
-  }
-  .metric::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); opacity: 0; transition: 0.3s;
-  }
-  .metric:hover { transform: translateY(-2px); border-color: var(--border-strong); box-shadow: 0 12px 24px -10px rgba(0,0,0,0.5); }
-  .metric:hover::before { opacity: 1; }
-  .metric .label { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px; text-transform: uppercase; }
-  .metric .label i { font-size: 18px; color: var(--text-primary); opacity: 0.7; }
-  .metric .value { font-size: 32px; font-weight: 700; line-height: 1.1; color: white; letter-spacing: -0.5px; display: flex; align-items: baseline; gap: 6px; }
-  .metric .unit { font-size: 14px; font-weight: 500; color: var(--text-secondary); opacity: 0.8; }
+  .metric { background: var(--bg-surface); border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--border-light); transition: 0.3s; }
+  .metric .label { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; }
+  .metric .value { font-size: 32px; font-weight: 700; color: white; }
+  .metric .unit { font-size: 14px; color: var(--text-secondary); opacity: 0.8; }
 
-  .card { 
-    background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-xl); 
-    padding: 24px; margin-bottom: 24px; transition: 0.3s; 
-  }
-  .card:hover { border-color: var(--border-strong); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.4); }
-  .section-title { font-size: 13px; font-weight: 600; letter-spacing: 1px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+  .card { background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-xl); padding: 24px; margin-bottom: 24px; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
   .chart-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px; }
 
   /* Tables */
-  .table-responsive { overflow-x: auto; margin: 0 -10px; padding: 0 10px; -webkit-overflow-scrolling: touch; }
+  .table-responsive { overflow-x: auto; }
   .log-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; font-size: 14px; text-align: left; min-width: 700px; }
-  .log-table th { padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-light); }
+  .log-table th { padding: 12px 16px; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; border-bottom: 1px solid var(--border-light); }
   .log-table td { padding: 16px; background: rgba(255,255,255,0.02); }
-  .log-table tr td:first-child { border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
-  .log-table tr td:last-child { border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
-  .log-table tr:hover td { background: rgba(255,255,255,0.05); }
-  .log-table tr.reserve-row td { background: rgba(245, 158, 11, 0.08); }
-  
-  .empty { text-align: center; padding: 64px 24px; color: var(--text-secondary); font-size: 15px; background: rgba(0,0,0,0.2); border-radius: 16px; border: 1px dashed var(--border-strong); }
-  .empty i { font-size: 40px; display: block; margin-bottom: 16px; color: var(--text-secondary); animation: pulseSubtle 3s infinite ease-in-out; }
+  .empty { text-align: center; padding: 64px 24px; color: var(--text-secondary); background: rgba(0,0,0,0.2); border-radius: 16px; border: 1px dashed var(--border-strong); }
 
   /* Badges & Alerts */
-  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 12px; border-radius: 99px; font-weight: 600; letter-spacing: 0.5px; }
-  .badge i { font-size: 14px; }
-  .badge-fuel { background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3); }
-  .badge-reserve { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 12px; border-radius: 99px; font-weight: 600; }
+  .badge-fuel { background: rgba(14, 165, 233, 0.15); color: #38bdf8; }
+  .badge-reserve { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
   .badge-good { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-  .del-btn { background: rgba(255,255,255,0.05); border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--text-secondary); font-size: 18px; padding: 6px; transition: 0.2s; display: flex; }
-  .del-btn:hover { color: var(--accent-red); background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); transform: scale(1.05); }
+  .del-btn { background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer; color: var(--text-secondary); padding: 6px; transition: 0.2s; border: none; }
+  .del-btn:hover { color: var(--accent-red); background: rgba(239, 68, 68, 0.1); }
 
-  .alert-banner { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; color: #fca5a5; display: flex; align-items: center; gap: 16px; font-size: 15px; font-weight: 500; display: none; }
-  .alert-banner i { color: var(--accent-red); }
-  .reserve-info { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; color: #fcd34d; display: flex; align-items: center; gap: 16px; font-size: 14px; font-weight: 500; }
-  .reserve-info i { color: var(--accent-amber); }
-
-  /* Custom Toasts */
-  #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
-  .toast { background: var(--bg-surface); border-left: 4px solid var(--accent-red); color: white; padding: 16px 24px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 12px; font-weight: 500; animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; pointer-events: auto; }
-  .toast.success { border-color: var(--accent-green); }
-  .toast.warning { border-color: var(--accent-amber); }
-  .toast i { font-size: 20px; }
-  .toast.fade-out { animation: fadeOutRight 0.3s forwards; }
+  .alert-banner { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; color: #fca5a5; display: none; align-items: center; gap: 16px; font-weight: 500; }
+  .reserve-info { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; color: #fcd34d; display: flex; align-items: center; gap: 16px; font-weight: 500; }
 
   /* Modals */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 10000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; padding: 20px; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 10000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; padding: 20px; }
   .modal-overlay.active { opacity: 1; pointer-events: auto; }
-  .modal-content { 
-    background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-xl); 
-    width: 100%; max-width: 440px; padding: 32px; transform: scale(0.95); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
-    max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7); 
-  }
+  .modal-content { background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-xl); width: 100%; max-width: 440px; padding: 32px; transform: scale(0.95); transition: 0.3s; max-height: 90vh; overflow-y: auto; }
   .modal-overlay.active .modal-content { transform: scale(1); }
   .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-  .modal-title { font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 10px; letter-spacing: -0.5px; }
-  .close-btn { 
-    background: rgba(255,255,255,0.05); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
-    color: var(--text-secondary); cursor: pointer; font-size: 20px; outline: none; transition: 0.2s; 
-  }
-  .close-btn:hover, .close-btn:focus { background: rgba(255,255,255,0.1); color: white; transform: rotate(90deg); }
+  .modal-title { font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  .close-btn { background: rgba(255,255,255,0.05); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); cursor: pointer; transition: 0.2s; }
+  .close-btn:hover { background: rgba(255,255,255,0.1); color: white; transform: rotate(90deg); }
 
   .field { margin-bottom: 20px; }
-  .field label { font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .field label { font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; }
+  .field input, .field select { width: 100%; padding: 14px 16px; border: 1px solid var(--border-strong); border-radius: 12px; background-color: rgba(255,255,255,0.03); color: white; outline: none; transition: 0.2s; }
+  .field input:focus, .field select:focus { border-color: var(--accent-blue); background-color: rgba(255,255,255,0.05); }
   
-  /* Reset default select styles for modals */
-  .field select {
-    appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 14px center; background-size: 16px; padding-right: 40px;
-  }
-  .field select option { background-color: var(--bg-surface); color: white; }
+  .modal-action-btn { width: 100%; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 600; border: none; color: white; cursor: pointer; margin-top: 16px; outline: none; transition: 0.2s; }
+  .modal-action-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+  
+  /* Toasts */
+  #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
+  .toast { background: var(--bg-surface); border-left: 4px solid var(--accent-red); color: white; padding: 16px 24px; border-radius: 8px; display: flex; align-items: center; gap: 12px; font-weight: 500; animation: scaleIn 0.3s forwards; }
+  .toast.success { border-color: var(--accent-green); }
 
-  .field input, .field select { 
-    width: 100%; font-size: 15px; padding: 14px 16px; border: 1px solid var(--border-strong); border-radius: 12px; 
-    background-color: rgba(255,255,255,0.03); color: white; outline: none; transition: 0.2s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
-  }
-  .field input:focus, .field select:focus { border-color: var(--accent-blue); background-color: rgba(255,255,255,0.05); box-shadow: inset 0 2px 4px rgba(0,0,0,0.15), 0 0 0 3px rgba(14, 165, 233, 0.15); }
-  .field input:hover, .field select:hover { background-color: rgba(255,255,255,0.06); }
-  
-  .modal-action-btn { 
-    width: 100%; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 600; border: none; 
-    color: white; cursor: pointer; margin-top: 16px; outline: none; transition: 0.2s; 
-  }
-  .modal-action-btn:hover, .modal-action-btn:focus { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
-  
-  .qty-preview { font-size: 14px; font-weight: 500; color: var(--text-secondary); text-align: center; margin-bottom: 16px; height: 20px; }
-  .qty-preview span { color: var(--accent-blue); font-weight: 700; }
-  
-  #qr-container { display: flex; justify-content: center; margin: 20px 0; background: white; padding: 20px; border-radius: 16px; width: max-content; margin-inline: auto; box-shadow: inset 0 0 0 4px rgba(0,0,0,0.05); }
-
-  /* Manage Vehicles Modal Specifics */
-  .v-list-wrapper { max-height: 300px; overflow-y: auto; margin-bottom: 16px; border: 1px solid var(--border-strong); border-radius: 12px; }
-  .v-list-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border-light); background: rgba(0,0,0,0.2); transition: 0.2s; }
-  .v-list-item:last-child { border-bottom: none; }
-  .v-list-item.active-v { border-left: 3px solid var(--accent-blue); background: rgba(14, 165, 233, 0.05); }
-  .v-list-info { display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 15px; color: var(--text-primary); }
-  .v-list-info i { color: var(--text-secondary); font-size: 18px; }
-  .v-list-actions { display: flex; gap: 8px; }
-  .v-action-btn { background: rgba(255,255,255,0.05); border: none; border-radius: 8px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-secondary); transition: 0.2s; }
-  .v-action-btn:hover { background: var(--bg-surface-hover); color: white; }
-  .v-action-btn.delete:hover { background: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
-  .manage-form-container { display: none; padding-top: 16px; border-top: 1px solid var(--border-strong); }
-  .manage-form-container.active { display: block; animation: fadeUp 0.3s forwards; }
-
-  /* =========================================
-     MOBILE RESPONSIVENESS UPDATES 
-     ========================================= */
   @media (max-width: 768px) {
     .app-container { padding: 16px; }
-    
-    /* Stack header items neatly */
     .top-header { flex-direction: column; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
     .profile-group { width: 100%; justify-content: space-between; }
-    
-    /* Force buttons full width for thumbs */
     .action-bar { flex-direction: column; gap: 12px; }
     .btn { width: 100%; justify-content: center; }
-    
-    /* Optimize metric cards */
-    .metric-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .metric { padding: 16px; }
-    .metric .value { font-size: 24px; }
-    
-    /* Reduce padding in modals and cards */
-    .card { padding: 16px; }
-    .modal-content { padding: 24px 20px; }
-    
-    /* Stack charts */
-    .chart-row { grid-template-columns: 1fr; gap: 16px; }
-  }
-
-  @media (max-width: 480px) {
-    /* Stack metrics completely on very narrow screens */
-    .metric-grid { grid-template-columns: 1fr; }
-    .login-card { padding: 32px 24px; }
-    .top-tab { padding: 10px 16px; font-size: 13px; }
+    .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-row { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -400,13 +207,18 @@
 
 <div id="toast-container"></div>
 
+<div id="initial-loader">
+  <i class="ti ti-loader" style="font-size: 48px; color: var(--accent-blue); animation: spin 1s linear infinite; margin-bottom: 16px;"></i>
+  <p style="color: var(--text-secondary); font-weight: 500;">Connecting to FleetCloud...</p>
+</div>
+
 <div id="login-screen">
   <div class="login-card">
     <i class="ti ti-steering-wheel"></i>
-    <h2 id="login-title">App Locked</h2>
-    <p id="login-subtitle">Enter your password to access telemetry</p>
+    <h2>App Locked</h2>
+    <p>Enter your password to access telemetry</p>
     <input type="password" id="auth-pwd" placeholder="Password" autofocus />
-    <button onclick="attemptLogin()" id="auth-btn">Unlock</button>
+    <button onclick="attemptLogin()">Unlock</button>
   </div>
 </div>
 
@@ -415,7 +227,6 @@
     
     <div class="top-header animate-in">
       <div class="profile-group">
-        
         <div class="vehicle-badge" id="sync-indicator">
             <i id="main-vehicle-icon" class="ti ti-motorbike" style="font-size: 24px; z-index: 2;"></i>
         </div>
@@ -425,29 +236,22 @@
             <span id="selected-vehicle-name">Loading...</span>
             <i class="ti ti-chevron-down" style="color: var(--text-secondary);"></i>
           </div>
-          <div class="custom-dropdown-options" id="vehicle-options-list">
-            </div>
+          <div class="custom-dropdown-options" id="vehicle-options-list"></div>
+        </div>
+      </div>
+      
+      <div class="profile-group">
+        <div class="status-dot-container">
+          <div id="connection-status" class="status-dot disconnected"></div>
+          <span id="connection-text">Connecting...</span>
         </div>
 
-        <button class="icon-btn" onclick="openManageVehiclesModal()" title="Manage Vehicles"><i class="ti ti-pencil"></i></button>
-      </div>
-      <div class="profile-group">
-        
         <div class="dropdown">
-          <button class="icon-btn" id="options-toggle-btn" title="Options Menu">
-            <i class="ti ti-settings"></i> Options
-          </button>
+          <button class="icon-btn" id="options-toggle-btn"><i class="ti ti-settings"></i></button>
           <div class="dropdown-content" id="optionsMenu">
-            <a onclick="openManageVehiclesModal()"><i class="ti ti-car"></i> Manage Vehicles</a>
             <a onclick="exportData()"><i class="ti ti-download"></i> Export Data (Excel)</a>
-            <a onclick="document.getElementById('import-file').click()"><i class="ti ti-upload"></i> Import Data (Excel)</a>
-            <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 8px 0;"></div>
-            <a onclick="openPasswordModal()"><i class="ti ti-shield-lock"></i> Change Password / 2FA</a>
           </div>
         </div>
-        
-        <input type="file" id="import-file" style="display:none" accept=".xlsx, .xls" onchange="importData(event)" />
-        
         <button class="logout-btn" onclick="logout()" title="Lock App"><i class="ti ti-power"></i></button>
       </div>
     </div>
@@ -458,44 +262,36 @@
     </div>
 
     <div class="top-tabs animate-in delay-1">
-      <button class="top-tab active" onclick="switchPanel('fuel',this)"><i class="ti ti-droplet"></i> Fuel Log</button>
-      <button class="top-tab" onclick="switchPanel('spend',this)"><i class="ti ti-tool"></i> Maintenance</button>
-      <button class="top-tab" onclick="switchPanel('oil',this)"><i class="ti ti-bucket-droplet"></i> Oil Log</button>
+      <button class="top-tab active" onclick="switchPanel('fuel',this)"><i class="ti ti-droplet"></i> Fuel</button>
+      <button class="top-tab" onclick="switchPanel('spend',this)"><i class="ti ti-tool"></i> Maint</button>
+      <button class="top-tab" onclick="switchPanel('oil',this)"><i class="ti ti-bucket-droplet"></i> Oil</button>
       <button class="top-tab" onclick="switchPanel('overview',this)"><i class="ti ti-chart-pie"></i> Overview</button>
     </div>
 
     <div class="panel active" id="panel-fuel">
       <div class="action-bar animate-in delay-2">
         <button class="btn btn-fuel" onclick="openModal('fuelModal')"><i class="ti ti-gas-station"></i> Fuel Up</button>
-        <button class="btn btn-reserve" onclick="openModal('reserveModal')"><i class="ti ti-alert-triangle"></i> Hit Reserve</button>
+        <button class="btn btn-reserve" onclick="openModal('reserveModal')"><i class="ti ti-alert-triangle"></i> Reserve</button>
       </div>
-
       <div class="reserve-info animate-in delay-2" id="reserve-pending" style="display:none">
         <i class="ti ti-pulse" style="font-size:24px;"></i>
-        <span>Reserve cycle active since <strong id="reserve-pending-km" style="color:#fff">—</strong> km. Next reserve calculates mileage.</span>
+        <span>Reserve active since <strong id="reserve-pending-km" style="color:#fff">—</strong> km.</span>
       </div>
-
       <div class="metric-grid animate-in delay-2">
-        <div class="metric"><div class="label"><i class="ti ti-gauge"></i> Best Mileage</div><div class="value" id="m-best">—<span class="unit">km/L</span></div></div>
-        <div class="metric"><div class="label"><i class="ti ti-trending-up"></i> Avg Mileage</div><div class="value" id="m-avg">—<span class="unit">km/L</span></div></div>
-        <div class="metric"><div class="label"><i class="ti ti-droplet"></i> Total Fuel</div><div class="value" id="m-fuel">—<span class="unit">L</span></div></div>
-        <div class="metric"><div class="label"><i class="ti ti-currency-rupee"></i> Fuel Spend</div><div class="value" id="m-spent">—<span class="unit">₹</span></div></div>
+        <div class="metric"><div class="label"><i class="ti ti-gauge"></i> Best</div><div class="value" id="m-best">—<span class="unit">km/L</span></div></div>
+        <div class="metric"><div class="label"><i class="ti ti-trending-up"></i> Avg</div><div class="value" id="m-avg">—<span class="unit">km/L</span></div></div>
       </div>
-
       <div class="chart-row animate-in delay-3">
-        <div class="card"><div class="section-title"><i class="ti ti-chart-line"></i> Mileage Trend (km/L)</div><div style="position:relative;height:200px"><canvas id="chart-mileage"></canvas></div></div>
-        <div class="card"><div class="section-title"><i class="ti ti-chart-bar"></i> Spend per fill-up (₹)</div><div style="position:relative;height:200px"><canvas id="chart-spend"></canvas></div></div>
+        <div class="card"><div class="section-title"><i class="ti ti-chart-line"></i> Mileage Trend</div><div style="position:relative;height:200px"><canvas id="chart-mileage"></canvas></div></div>
       </div>
-
       <div class="card animate-in delay-3">
         <div class="section-title"><i class="ti ti-history"></i> Fuel History</div>
         <div class="table-responsive">
           <table class="log-table">
-            <thead><tr><th>Date</th><th>Type</th><th>Odometer</th><th>Distance</th><th>Qty (L)</th><th>Rate</th><th>Amount</th><th>Mileage</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>Type</th><th>Odometer</th><th>Qty (L)</th><th>Amount</th><th>Mileage</th><th></th></tr></thead>
             <tbody id="fuel-log-body"></tbody>
           </table>
         </div>
-        <div class="empty" id="fuel-empty"><i class="ti ti-gas-station"></i>No entries found.<br><span style="font-size: 13px; opacity: 0.7; display: block; margin-top: 8px;">Log a Reserve or Fuel Up to get started.</span></div>
       </div>
     </div>
 
@@ -504,118 +300,36 @@
         <button class="btn btn-spend" onclick="openModal('spendModal')"><i class="ti ti-plus"></i> Add Maintenance</button>
       </div>
       <div class="metric-grid animate-in delay-1">
-        <div class="metric"><div class="label"><i class="ti ti-currency-rupee"></i> Total Spends</div><div class="value" id="s-total">—<span class="unit">₹</span></div></div>
-        <div class="metric"><div class="label"><i class="ti ti-list"></i> Service Records</div><div class="value" id="s-count">—<span class="unit">entries</span></div></div>
-      </div>
-      <div class="chart-row animate-in delay-2">
-        <div class="card"><div class="section-title"><i class="ti ti-chart-donut"></i> Spend by Category</div><div style="position:relative;height:220px"><canvas id="chart-cat"></canvas></div></div>
-        <div class="card"><div class="section-title"><i class="ti ti-chart-bar"></i> Spend Timeline</div><div style="position:relative;height:220px"><canvas id="chart-timeline"></canvas></div></div>
+        <div class="metric"><div class="label"><i class="ti ti-currency-rupee"></i> Total</div><div class="value" id="s-total">—<span class="unit">₹</span></div></div>
       </div>
       <div class="card animate-in delay-2">
-        <div class="section-title"><i class="ti ti-history"></i> Maintenance History</div>
+        <div class="section-title"><i class="ti ti-history"></i> History</div>
         <div class="table-responsive">
           <table class="log-table">
             <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th></th></tr></thead>
             <tbody id="spend-log-body"></tbody>
           </table>
         </div>
-        <div class="empty" id="spend-empty"><i class="ti ti-tool"></i>No maintenance records logged yet.</div>
       </div>
     </div>
 
     <div class="panel" id="panel-oil">
       <div class="action-bar animate-in">
-        <button class="btn btn-oil" onclick="openModal('oilModal')"><i class="ti ti-bucket-droplet"></i> Log Oil Change</button>
-      </div>
-      <div class="metric-grid animate-in delay-1">
-        <div class="metric"><div class="label"><i class="ti ti-road"></i> Last Changed At</div><div class="value" id="oil-last-odo">—<span class="unit">km</span></div></div>
-        <div class="metric"><div class="label"><i class="ti ti-ruler-measure"></i> Est. Distance Since</div><div class="value" id="oil-dist">—<span class="unit">km</span></div></div>
+        <button class="btn btn-oil" onclick="openModal('oilModal')"><i class="ti ti-bucket-droplet"></i> Log Oil</button>
       </div>
       <div class="card animate-in delay-2">
-        <div class="section-title"><i class="ti ti-history"></i> Oil Replacement History</div>
         <div class="table-responsive">
           <table class="log-table">
-            <thead><tr><th>Date</th><th>Odometer</th><th>Amount (Optional)</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>Odometer</th><th>Amount</th><th></th></tr></thead>
             <tbody id="oil-log-body"></tbody>
           </table>
         </div>
-        <div class="empty" id="oil-empty"><i class="ti ti-bucket-droplet"></i>No oil change records found.</div>
       </div>
     </div>
 
     <div class="panel" id="panel-overview">
       <div class="metric-grid animate-in">
-        <div class="metric"><div class="label"><i class="ti ti-droplet"></i> Fuel Total</div><div class="value" id="o-fuel">—<span class="unit">₹</span></div></div>
-        <div class="metric"><div class="label"><i class="ti ti-tool"></i> Maint & Oil Total</div><div class="value" id="o-maint">—<span class="unit">₹</span></div></div>
-        <div class="metric"><div class="label"><i class="ti ti-wallet"></i> Grand Total</div><div class="value" id="o-grand">—<span class="unit">₹</span></div></div>
-      </div>
-      <div class="chart-row animate-in delay-1">
-        <div class="card"><div class="section-title"><i class="ti ti-chart-donut"></i> Expense Distribution</div><div style="position:relative;height:240px"><canvas id="chart-overview-pie"></canvas></div></div>
-        <div class="card"><div class="section-title"><i class="ti ti-chart-bar"></i> Monthly Spend (₹)</div><div style="position:relative;height:240px"><canvas id="chart-monthly"></canvas></div></div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<div class="modal-overlay" id="confirmModal" style="z-index: 10001;">
-  <div class="modal-content" style="max-width: 400px; text-align: center; padding: 40px 32px;">
-    <i class="ti ti-alert-triangle" style="font-size: 48px; color: var(--accent-red); margin-bottom: 16px; display: inline-block;"></i>
-    <h3 style="margin-bottom: 12px; font-size: 20px; color: var(--text-primary);">Are you sure?</h3>
-    <p id="confirm-msg" style="color: var(--text-secondary); margin-bottom: 32px; font-size: 15px; line-height: 1.5;"></p>
-    <div style="display: flex; gap: 12px;">
-      <button class="modal-action-btn" style="background: rgba(255,255,255,0.05); color: white; margin-top: 0; flex: 1;" onclick="closeModal('confirmModal')">Cancel</button>
-      <button class="modal-action-btn" id="confirm-yes-btn" style="background: var(--accent-red); margin-top: 0; flex: 1; box-shadow: 0 8px 20px -6px rgba(239, 68, 68, 0.4);">Delete</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="passwordModal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <div class="modal-title" style="color: var(--accent-green)"><i class="ti ti-shield-lock"></i> Security Settings</div>
-      <button class="close-btn" onclick="closeModal('passwordModal')"><i class="ti ti-x"></i></button>
-    </div>
-    <div id="2fa-setup-text" style="display:none; text-align:center; margin-bottom: 24px;">
-      <p style="font-size:14px; color:var(--text-secondary); margin-bottom: 12px; line-height: 1.6;">Scan this QR code with Google Authenticator or Authy to secure your dashboard.</p>
-      <div id="qr-container"></div>
-    </div>
-    <div class="field"><label>New App Password</label><input type="password" id="new-pwd" placeholder="Enter new password" /></div>
-    <div class="field"><label>Authenticator Code</label><input type="text" id="totp-code" placeholder="6-digit code" maxlength="6" style="letter-spacing: 4px; text-align: center; font-size: 24px; font-weight: 600;" /></div>
-    <button class="modal-action-btn" style="background:linear-gradient(135deg, #10b981, #059669); box-shadow: 0 8px 20px -6px rgba(16,185,129,0.4);" onclick="verifyAndChangePassword()">Save Security Settings</button>
-  </div>
-</div>
-
-<div class="modal-overlay" id="manageVehiclesModal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <div class="modal-title" style="color: var(--text-primary)"><i class="ti ti-car"></i> Manage Vehicles</div>
-      <button class="close-btn" onclick="closeModal('manageVehiclesModal')"><i class="ti ti-x"></i></button>
-    </div>
-    
-    <div id="v-list-container">
-      <div class="v-list-wrapper" id="manage-vehicle-list">
-         </div>
-      <button class="btn btn-spend" style="width: 100%; justify-content: center;" onclick="showAddVehicleForm()"><i class="ti ti-plus"></i> Add New Vehicle</button>
-    </div>
-
-    <div class="manage-form-container" id="v-form-container">
-      <div style="font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
-         <i class="ti ti-pencil"></i> <span id="v-form-title">Add Vehicle</span>
-      </div>
-      <input type="hidden" id="v-edit-id" value="" />
-      <div class="field"><label>Vehicle Name</label><input type="text" id="v-name" placeholder="e.g. Daily Commuter" /></div>
-      <div class="field">
-        <label>Vehicle Type</label>
-        <select id="v-type">
-          <option value="bike">Bike / Motorcycle</option>
-          <option value="car">Car</option>
-          <option value="moped">Moped / Scooter (Activa)</option>
-        </select>
-      </div>
-      <div style="display: flex; gap: 12px; margin-top: 24px;">
-        <button class="modal-action-btn" style="background: rgba(255,255,255,0.05); color: var(--text-primary); margin-top: 0; flex: 1;" onclick="hideVehicleForm()">Cancel</button>
-        <button class="modal-action-btn" style="background: var(--accent-blue); margin-top: 0; flex: 1; box-shadow: 0 8px 20px -6px var(--accent-blue-glow);" onclick="saveVehicle()">Save Vehicle</button>
+        <div class="metric"><div class="label">Total Expense</div><div class="value" id="o-grand">—<span class="unit">₹</span></div></div>
       </div>
     </div>
 
@@ -624,808 +338,225 @@
 
 <div class="modal-overlay" id="fuelModal">
   <div class="modal-content">
-    <div class="modal-header">
-      <div class="modal-title" style="color: var(--accent-blue)"><i class="ti ti-gas-station"></i> Log Fuel Up</div>
-      <button class="close-btn" onclick="closeModal('fuelModal')"><i class="ti ti-x"></i></button>
-    </div>
-    <div class="field"><label>Date (DD/MM/YYYY)</label><input type="text" class="date-picker" id="f-date" placeholder="DD/MM/YYYY" maxlength="10" /></div>
-    <div class="field"><label>Amount Paid (₹)</label><input type="number" id="f-amount" placeholder="e.g. 500" min="0" oninput="calcQty()" /></div>
-    <div class="field"><label>Rate (₹/L)</label><input type="number" id="f-rate" placeholder="e.g. 106.50" min="0" step="0.01" oninput="calcQty()" /></div>
-    <div class="qty-preview" id="qty-display"></div>
-    <button class="modal-action-btn btn-fuel" onclick="saveFuel()">Save Fuel Log</button>
+    <div class="modal-header"><div class="modal-title" style="color: var(--accent-blue)"><i class="ti ti-gas-station"></i> Log Fuel Up</div><button class="close-btn" onclick="closeModal('fuelModal')"><i class="ti ti-x"></i></button></div>
+    <div class="field"><label>Date</label><input type="text" class="date-picker" id="f-date" placeholder="DD/MM/YYYY"/></div>
+    <div class="field"><label>Amount (₹)</label><input type="number" id="f-amount"/></div>
+    <div class="field"><label>Rate (₹/L)</label><input type="number" id="f-rate"/></div>
+    <button class="modal-action-btn btn-fuel" onclick="saveFuel()">Save</button>
   </div>
 </div>
 
 <div class="modal-overlay" id="reserveModal">
   <div class="modal-content">
-    <div class="modal-header">
-      <div class="modal-title" style="color: var(--accent-amber)"><i class="ti ti-alert-triangle"></i> Hit Reserve</div>
-      <button class="close-btn" onclick="closeModal('reserveModal')"><i class="ti ti-x"></i></button>
-    </div>
-    <div class="field"><label>Date (DD/MM/YYYY)</label><input type="text" class="date-picker" id="r-date" placeholder="DD/MM/YYYY" maxlength="10" /></div>
-    <div class="field"><label>Odometer (km)</label><input type="number" id="r-odo" placeholder="e.g. 12450" min="0" /></div>
-    <button class="modal-action-btn btn-reserve" onclick="saveReserve()">Log Reserve Point</button>
+    <div class="modal-header"><div class="modal-title" style="color: var(--accent-amber)"><i class="ti ti-alert-triangle"></i> Reserve</div><button class="close-btn" onclick="closeModal('reserveModal')"><i class="ti ti-x"></i></button></div>
+    <div class="field"><label>Date</label><input type="text" class="date-picker" id="r-date"/></div>
+    <div class="field"><label>Odometer</label><input type="number" id="r-odo"/></div>
+    <button class="modal-action-btn btn-reserve" onclick="saveReserve()">Save</button>
   </div>
 </div>
 
 <div class="modal-overlay" id="spendModal">
   <div class="modal-content">
-    <div class="modal-header">
-      <div class="modal-title" style="color: var(--accent-purple)"><i class="ti ti-tool"></i> Add Maintenance</div>
-      <button class="close-btn" onclick="closeModal('spendModal')"><i class="ti ti-x"></i></button>
-    </div>
-    <div class="field"><label>Date (DD/MM/YYYY)</label><input type="text" class="date-picker" id="s-date" placeholder="DD/MM/YYYY" maxlength="10" /></div>
-    <div class="field">
-      <label>Category</label>
-      <select id="s-cat">
-        <option>Service</option><option>Spare part</option><option>Repair</option>
-        <option>Tyre</option><option>Insurance</option><option>Other</option>
-      </select>
-    </div>
-    <div class="field"><label>Description</label><input type="text" id="s-desc" placeholder="e.g. Brake pad change" /></div>
-    <div class="field"><label>Amount (₹)</label><input type="number" id="s-amount" placeholder="e.g. 800" min="0" /></div>
-    <button class="modal-action-btn btn-spend" onclick="saveSpend()">Save Record</button>
+    <div class="modal-header"><div class="modal-title" style="color: var(--accent-purple)"><i class="ti ti-tool"></i> Maint</div><button class="close-btn" onclick="closeModal('spendModal')"><i class="ti ti-x"></i></button></div>
+    <div class="field"><label>Date</label><input type="text" class="date-picker" id="s-date"/></div>
+    <div class="field"><label>Category</label><select id="s-cat"><option>Service</option><option>Repair</option><option>Tyre</option><option>Other</option></select></div>
+    <div class="field"><label>Description</label><input type="text" id="s-desc"/></div>
+    <div class="field"><label>Amount</label><input type="number" id="s-amount"/></div>
+    <button class="modal-action-btn btn-spend" onclick="saveSpend()">Save</button>
   </div>
 </div>
 
 <div class="modal-overlay" id="oilModal">
   <div class="modal-content">
-    <div class="modal-header">
-      <div class="modal-title" style="color: var(--accent-red)"><i class="ti ti-bucket-droplet"></i> Log Oil Change</div>
-      <button class="close-btn" onclick="closeModal('oilModal')"><i class="ti ti-x"></i></button>
-    </div>
-    <div class="field"><label>Date (DD/MM/YYYY)</label><input type="text" class="date-picker" id="oil-date" placeholder="DD/MM/YYYY" maxlength="10" /></div>
-    <div class="field"><label>Odometer (km)</label><input type="number" id="oil-odo" placeholder="e.g. 15000" min="0" /></div>
-    <div class="field"><label>Amount Spent (₹) - Optional</label><input type="number" id="oil-amount" placeholder="e.g. 350" min="0" /></div>
-    <button class="modal-action-btn btn-oil" onclick="saveOil()">Save Oil Log</button>
+    <div class="modal-header"><div class="modal-title" style="color: var(--accent-red)"><i class="ti ti-bucket-droplet"></i> Oil Change</div><button class="close-btn" onclick="closeModal('oilModal')"><i class="ti ti-x"></i></button></div>
+    <div class="field"><label>Date</label><input type="text" class="date-picker" id="oil-date"/></div>
+    <div class="field"><label>Odo</label><input type="number" id="oil-odo"/></div>
+    <button class="modal-action-btn btn-oil" onclick="saveOil()">Save</button>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/otpauth/9.3.1/otpauth.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
 <script>
-Chart.defaults.color = '#94a3b8';
-Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
-Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
+Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
 let charts = {};
+const todayStr = `${String(new Date().getDate()).padStart(2, '0')}/${String(new Date().getMonth()+1).padStart(2, '0')}/${new Date().getFullYear()}`;
 
-// Helper to get strictly DD/MM/YYYY format of today
-function getTodayStr() {
-  const d = new Date();
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}/${d.getFullYear()}`;
-}
-const todayStr = getTodayStr();
-
-// Universal Date Parser
-function parseD(dStr) {
-  if (!dStr) return new Date(0);
-  if (dStr.includes('/')) {
-    const p = dStr.split('/');
-    return new Date(`${p[2]}-${p[1]}-${p[0]}`); 
-  }
-  return new Date(dStr);
-}
-
-// Universal Month Extractor
-function getMo(dStr) {
-  if (dStr.includes('/')) {
-    const p = dStr.split('/');
-    return `${p[2]}-${p[1]}`;
-  }
-  return dStr.slice(0,7);
-}
-
-// CUSTOM TOAST NOTIFICATION
 function showToast(msg, type = 'error') {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.innerHTML = `<i class="ti ${type === 'success' ? 'ti-check' : 'ti-alert-circle'}"></i> ${msg}`;
-  container.appendChild(toast);
-  setTimeout(() => {
-      toast.classList.add('fade-out');
-      setTimeout(() => toast.remove(), 300);
-  }, 3000);
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div'); t.className = `toast ${type}`; t.innerHTML = msg;
+  c.appendChild(t); setTimeout(() => t.remove(), 3000);
 }
 
-// CUSTOM CONFIRM MODAL
-let pendingConfirmCallback = null;
-function customConfirm(msg, callback) {
-  document.getElementById('confirm-msg').innerText = msg;
-  pendingConfirmCallback = callback;
-  openModal('confirmModal');
-}
-document.getElementById('confirm-yes-btn').addEventListener('click', () => {
-  if (pendingConfirmCallback) pendingConfirmCallback();
-  closeModal('confirmModal');
-});
-
-// DATA STATE
+// Data Base
 let appData = {
-  version: 4,
-  password: btoa("Raksh"), 
-  totpSecret: null, 
-  currentVehicleId: 'v1',
-  vehicles: {
-    'v1': { name: 'My Bike', type: 'bike', fuelEntries: [], spendEntries: [], oilEntries: [], lastRate: null }
-  }
+  version: 4, password: btoa("Raksh"), currentVehicleId: 'v1',
+  vehicles: { 'v1': { name: 'My Bike', type: 'bike', fuelEntries: [], spendEntries: [], oilEntries: [] } }
 };
 
-let currentTotpSetup = null; 
-
-// ==================================================
-// FIREBASE CONFIGURATION INJECTED HERE
-// ==================================================
+// FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyBF_q_n5T8SvyM4QGEcCEm3428rJGCcad0",
   authDomain: "myfleetcloud-1fad6.firebaseapp.com",
   projectId: "myfleetcloud-1fad6",
-  storageBucket: "myfleetcloud-1fad6.firebasestorage.app",
-  messagingSenderId: "495153939884",
-  appId: "1:495153939884:web:4e5c95882f6e016777a609"
+  storageBucket: "myfleetcloud-1fad6.firebasestorage.app"
 };
 
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-
-// We will store all data in a single document for your dashboard
 const USER_DOC_ID = "my_fleet_data"; 
 
-// INITIALIZATION (Cloud Fetch)
-async function initApp() {
-  try {
-    // 1. Try to fetch data from Firebase
-    const docRef = await db.collection("telemetry").doc(USER_DOC_ID).get();
+// --- REAL-TIME SYNC LOGIC ---
+let isFirstLoad = true;
+
+function setupRealtimeSync() {
+  // Listen for Live Updates
+  db.collection("telemetry").doc(USER_DOC_ID).onSnapshot((doc) => {
+    // 1. Manage UI Connection Status
+    const dot = document.getElementById('connection-status');
+    const text = document.getElementById('connection-text');
+    dot.className = 'status-dot connected'; text.innerText = 'Live Sync';
+
+    // 2. Hide Initial Loader
+    if (isFirstLoad) {
+        document.getElementById('initial-loader').style.display = 'none';
+        isFirstLoad = false;
+        if(localStorage.getItem('isLoggedIn') === 'true') { unlockApp(false); }
+    }
     
-    if (docRef.exists) {
-      let parsed = docRef.data();
-      appData = { ...appData, ...parsed }; 
-      for (let vId in appData.vehicles) {
-         if (!appData.vehicles[vId].type) appData.vehicles[vId].type = 'bike';
-         if (!appData.vehicles[vId].oilEntries) appData.vehicles[vId].oilEntries = [];
+    // 3. Process Data
+    if (doc.exists) {
+      appData = { ...appData, ...doc.data() };
+      // Refresh views if app is unlocked
+      if(localStorage.getItem('isLoggedIn') === 'true') {
+         populateVehicleSelect();
+         refreshUI();
       }
     } else {
-      // 2. If it's a brand new database, save the default initial state
-      saveLocal();
+      // Document doesn't exist yet, save baseline
+      saveLocal(); 
     }
-  } catch (error) {
-    console.error("Firebase fetch error:", error);
-    showToast("Cloud fetch failed. Loading offline backup.", "error");
-    
-    // 3. Failsafe: Load offline backup if Firebase is blocked or offline
-    const saved = localStorage.getItem('bikeDataStore');
-    if(saved) {
-      let parsed = JSON.parse(saved);
-      appData = { ...appData, ...parsed };
+  }, (error) => {
+    console.error(error);
+    document.getElementById('connection-status').className = 'status-dot disconnected';
+    document.getElementById('connection-text').innerText = 'Offline';
+    if(isFirstLoad) { 
+        document.getElementById('initial-loader').style.display = 'none';
+        isFirstLoad = false; 
     }
-  }
-  
-  if(sessionStorage.getItem('isLoggedIn') === 'true') { 
-      unlockApp(); 
-  } else {
-      setTimeout(() => document.getElementById('auth-pwd').focus(), 100);
-  }
-
-  initDatePickers();
-}
-
-function initDatePickers() {
-  flatpickr(".date-picker", { dateFormat: "d/m/Y", allowInput: true, disableMobile: "true" });
-  document.querySelectorAll('.date-picker').forEach(input => {
-      input.addEventListener('input', function(e) {
-          let v = this.value.replace(/[^\d]/g, ''); 
-          if (v.length > 8) v = v.substring(0, 8);
-          if (v.length >= 5) this.value = v.substring(0, 2) + '/' + v.substring(2, 4) + '/' + v.substring(4, 8);
-          else if (v.length >= 3) this.value = v.substring(0, 2) + '/' + v.substring(2, 4);
-          else this.value = v;
-      });
   });
 }
 
-// KEYBOARD ACCESSIBILITY
-document.addEventListener('keydown', function(e) {
-  const activeModal = document.querySelector('.modal-overlay.active');
+function initApp() {
+  initDatePickers();
   
-  if (!activeModal && document.getElementById('login-screen').style.display !== 'none' && e.key === 'Enter') {
-      attemptLogin();
-      return;
-  }
-  if (!activeModal) return;
-  if (e.key === 'Escape') closeModal(activeModal.id);
-  else if (e.key === 'Enter') {
-      if (!['BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-         e.preventDefault();
-         const actionBtn = activeModal.querySelector('.modal-action-btn:last-child');
-         if (actionBtn) actionBtn.click();
-      }
-  }
-});
-
-// AUTH WITH SHAKE & VIBRATE
-function attemptLogin() {
-  const pwdInput = document.getElementById('auth-pwd');
-  if(btoa(pwdInput.value) === appData.password) {
-    sessionStorage.setItem('isLoggedIn', 'true');
-    unlockApp();
+  if(localStorage.getItem('isLoggedIn') === 'true') { 
+      document.getElementById('initial-loader').style.display = 'flex';
+      setupRealtimeSync(); 
   } else {
-    pwdInput.classList.add('error-shake');
-    if (navigator.vibrate) navigator.vibrate(200);
-    setTimeout(() => {
-        pwdInput.classList.remove('error-shake');
-        pwdInput.value = '';
-        pwdInput.focus();
-    }, 400);
+      setupRealtimeSync(); // We connect in background even if logged out
+      document.getElementById('login-screen').style.display = 'flex';
   }
 }
 
-function unlockApp() {
+function attemptLogin() {
+  const pwd = document.getElementById('auth-pwd');
+  if(btoa(pwd.value) === appData.password) {
+    localStorage.setItem('isLoggedIn', 'true'); // Persist login
+    unlockApp(true);
+  } else {
+    pwd.classList.add('error-shake'); setTimeout(() => { pwd.classList.remove('error-shake'); pwd.value = ''; }, 400);
+  }
+}
+
+function unlockApp(isManual) {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-main').style.display = 'block';
   document.getElementById('auth-pwd').value = '';
-  populateVehicleSelect();
-  refreshUI();
+  populateVehicleSelect(); refreshUI();
 }
 
 function logout() {
-  sessionStorage.removeItem('isLoggedIn');
+  localStorage.removeItem('isLoggedIn');
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app-main').style.display = 'none';
-  setTimeout(() => document.getElementById('auth-pwd').focus(), 100);
 }
 
-// ----------------------------------------------------
-// CLOUD SYNC LOGIC
-// ----------------------------------------------------
-function triggerCloudSyncAnimation() {
-  const indicator = document.getElementById('sync-indicator');
-  
-  // Start Syncing (Yellow Neon)
-  indicator.classList.remove('sync-success');
-  indicator.classList.add('sync-updating');
-  
-  // Simulate network delay for UI responsiveness (800ms to 1500ms)
-  const syncDelay = 800 + Math.random() * 700;
-  
-  setTimeout(() => {
-    // End Syncing (Green Neon)
-    indicator.classList.remove('sync-updating');
-    indicator.classList.add('sync-success');
-    
-    // Fade out Green glow back to normal after 2.5 seconds
-    setTimeout(() => {
-      indicator.classList.remove('sync-success');
-    }, 2500);
-    
-  }, syncDelay);
-}
-
-// SAVE DATA (Cloud Push with Animation)
-function saveLocal() { 
-  // 1. Always keep a local backup in case of offline usage
-  localStorage.setItem('bikeDataStore', JSON.stringify(appData)); 
-  
-  // 2. Trigger the neon yellow syncing animation
-  triggerCloudSyncAnimation();
-  
-  // 3. Push to Firebase Firestore
+function saveLocal() {
+  // Push changes out. The onSnapshot listener will pick this up automatically 
+  // and trigger refreshUI on your other devices!
+  document.getElementById('sync-indicator').classList.add('sync-updating');
   db.collection("telemetry").doc(USER_DOC_ID).set(appData)
-    .then(() => {
-       console.log("Successfully synced to cloud.");
-       // Note: The green success animation is handled via setTimeout in triggerCloudSyncAnimation
-    })
-    .catch((error) => {
-       console.error("Cloud Sync Failed: ", error);
-       showToast("Cloud Sync Failed!", "error");
-       
-       // Force stop the animation if it errors out
-       const indicator = document.getElementById('sync-indicator');
-       indicator.classList.remove('sync-updating', 'sync-success');
-    });
-}
-// ----------------------------------------------------
-
-// MENUS & DROPDOWNS
-document.getElementById('options-toggle-btn').addEventListener('click', function(e) {
-  e.stopPropagation();
-  document.getElementById("vehicle-options-list").classList.remove("show"); 
-  document.getElementById("optionsMenu").classList.toggle("show");
-});
-
-function toggleVehicleDropdown(e) {
-  if(e) e.stopPropagation();
-  document.getElementById("optionsMenu").classList.remove("show"); 
-  document.getElementById("vehicle-options-list").classList.toggle("show");
+    .then(() => setTimeout(() => document.getElementById('sync-indicator').classList.remove('sync-updating'), 1000));
 }
 
-window.onclick = function(event) {
-  if (!event.target.closest('#options-toggle-btn') && !event.target.closest('.dropdown')) {
-    document.getElementById("optionsMenu").classList.remove('show');
-  }
-  if (!event.target.closest('.custom-dropdown')) {
-    document.getElementById("vehicle-options-list").classList.remove('show');
-  }
-}
-
-// 2FA & PASSWORD
-function openPasswordModal() {
-  document.getElementById('passwordModal').classList.add('active');
-  document.getElementById('new-pwd').value = ''; document.getElementById('totp-code').value = '';
-  const qrContainer = document.getElementById('qr-container');
-  qrContainer.innerHTML = ''; 
-  
-  if (!appData.totpSecret) {
-    document.getElementById('2fa-setup-text').style.display = 'block';
-    const secret = new OTPAuth.Secret({ size: 20 });
-    currentTotpSetup = new OTPAuth.TOTP({ issuer: 'MyFleetMaint', label: 'Admin', algorithm: 'SHA1', digits: 6, period: 30, secret: secret });
-    new QRCode(qrContainer, { text: currentTotpSetup.toString(), width: 160, height: 160, colorDark: "#090e17", colorLight: "#ffffff" });
-  } else {
-    document.getElementById('2fa-setup-text').style.display = 'none';
-    currentTotpSetup = new OTPAuth.TOTP({ issuer: 'MyFleetMaint', label: 'Admin', algorithm: 'SHA1', digits: 6, period: 30, secret: OTPAuth.Secret.fromBase32(appData.totpSecret) });
-  }
-  setTimeout(() => document.getElementById('new-pwd').focus(), 50);
-}
-
-function verifyAndChangePassword() {
-  const code = document.getElementById('totp-code').value;
-  const newPwd = document.getElementById('new-pwd').value;
-  if (!code || code.length !== 6 || !newPwd) return showToast("Please provide both a new password and a 6-digit authenticator code.");
-  
-  let delta = currentTotpSetup.validate({ token: code, window: 1 });
-  if (delta !== null) {
-    appData.password = btoa(newPwd);
-    if (!appData.totpSecret) appData.totpSecret = currentTotpSetup.secret.base32;
-    saveLocal(); closeModal('passwordModal'); showToast("Security settings updated successfully!", "success");
-  } else {
-    showToast("Invalid Authenticator Code. Try again.");
-  }
-}
-
-// GETTERS
+// Helpers
+function initDatePickers() { flatpickr(".date-picker", { dateFormat: "d/m/Y", allowInput: true, disableMobile: "true" }); }
 function cv() { return appData.vehicles[appData.currentVehicleId]; }
 function fData() { return cv().fuelEntries; }
 function sData() { return cv().spendEntries; }
 function oData() { return cv().oilEntries; }
 
-// UI Navigation
 function switchPanel(name, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('panel-' + name).classList.add('active');
   btn.classList.add('active');
-  if (name === 'overview') renderOverview();
 }
 
 function openModal(id) {
   document.getElementById(id).classList.add('active');
-  if(id === 'fuelModal') {
-    document.getElementById('f-date').value = todayStr;
-    if(cv().lastRate) document.getElementById('f-rate').value = cv().lastRate;
-    document.getElementById('qty-display').innerHTML = '';
-  }
+  if(id === 'fuelModal') document.getElementById('f-date').value = todayStr;
   if(id === 'reserveModal') document.getElementById('r-date').value = todayStr;
   if(id === 'spendModal') document.getElementById('s-date').value = todayStr;
-  if(id === 'oilModal') {
-    document.getElementById('oil-date').value = todayStr;
-    document.getElementById('oil-amount').value = '';
-    document.getElementById('oil-odo').value = '';
-  }
-  setTimeout(() => {
-     const firstInput = document.getElementById(id).querySelector('input:not([type="hidden"]):not(.date-picker), select');
-     if(firstInput) firstInput.focus();
-  }, 50);
+  if(id === 'oilModal') document.getElementById('oil-date').value = todayStr;
 }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
-// ==========================================
-// MANAGE VEHICLES LOGIC
-// ==========================================
-function getIconForType(type) {
-    if(type === 'car') return 'ti-car';
-    if(type === 'moped') return 'ti-scooter';
-    return 'ti-motorbike';
-}
+// Vehicle Nav
+function toggleVehicleDropdown(e) { e.stopPropagation(); document.getElementById("vehicle-options-list").classList.toggle("show"); }
+document.getElementById('options-toggle-btn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById("optionsMenu").classList.toggle("show"); });
+window.onclick = (e) => { if(!e.target.closest('.custom-dropdown')) document.getElementById("vehicle-options-list").classList.remove('show'); if(!e.target.closest('.dropdown')) document.getElementById("optionsMenu").classList.remove('show'); }
 
 function populateVehicleSelect() {
-  const list = document.getElementById('vehicle-options-list');
-  const currentVehicle = appData.vehicles[appData.currentVehicleId];
-  document.getElementById('selected-vehicle-name').innerText = currentVehicle.name;
-
-  list.innerHTML = Object.entries(appData.vehicles).map(([id, v]) => 
-    `<div class="custom-dropdown-option ${id === appData.currentVehicleId ? 'active' : ''}" onclick="selectVehicle('${id}', event)">
-        <i class="ti ${getIconForType(v.type)}"></i>${v.name}
-     </div>`
-  ).join('');
-  updateVehicleIcon();
+  document.getElementById('selected-vehicle-name').innerText = cv().name;
+  document.getElementById('vehicle-options-list').innerHTML = Object.entries(appData.vehicles).map(([id, v]) => `<div class="custom-dropdown-option ${id === appData.currentVehicleId ? 'active' : ''}" onclick="selectV('${id}', event)">${v.name}</div>`).join('');
 }
+function selectV(id, e) { e.stopPropagation(); appData.currentVehicleId = id; saveLocal(); populateVehicleSelect(); refreshUI(); }
 
-function selectVehicle(id, event) {
-  if(event) event.stopPropagation();
-  appData.currentVehicleId = id;
-  document.getElementById('vehicle-options-list').classList.remove('show');
-  saveLocal(); updateVehicleIcon(); refreshUI(); populateVehicleSelect();
-}
-
-function updateVehicleIcon() {
-  document.getElementById('main-vehicle-icon').className = `ti ${getIconForType(cv().type)}`;
-}
-
-function openManageVehiclesModal() {
-  hideVehicleForm();
-  renderVehicleList();
-  openModal('manageVehiclesModal');
-}
-
-function renderVehicleList() {
-  const list = document.getElementById('manage-vehicle-list');
-  list.innerHTML = Object.entries(appData.vehicles).map(([id, v]) => `
-    <div class="v-list-item ${id === appData.currentVehicleId ? 'active-v' : ''}">
-       <div class="v-list-info">
-           <i class="ti ${getIconForType(v.type)}"></i> ${v.name}
-           ${id === appData.currentVehicleId ? '<span class="badge badge-good" style="padding: 2px 6px; font-size: 10px;">Active</span>' : ''}
-       </div>
-       <div class="v-list-actions">
-           <button class="v-action-btn" onclick="editVehicleForm('${id}')"><i class="ti ti-pencil"></i></button>
-           <button class="v-action-btn delete" onclick="deleteVehicle('${id}')"><i class="ti ti-trash"></i></button>
-       </div>
-    </div>
-  `).join('');
-}
-
-function showAddVehicleForm() {
-  document.getElementById('v-form-title').innerText = 'Add New Vehicle';
-  document.getElementById('v-edit-id').value = '';
-  document.getElementById('v-name').value = '';
-  document.getElementById('v-type').value = 'bike';
-  
-  document.getElementById('v-list-container').style.display = 'none';
-  document.getElementById('v-form-container').classList.add('active');
-  setTimeout(() => document.getElementById('v-name').focus(), 50);
-}
-
-function editVehicleForm(id) {
-  const v = appData.vehicles[id];
-  document.getElementById('v-form-title').innerText = 'Edit Vehicle';
-  document.getElementById('v-edit-id').value = id;
-  document.getElementById('v-name').value = v.name;
-  document.getElementById('v-type').value = v.type;
-  
-  document.getElementById('v-list-container').style.display = 'none';
-  document.getElementById('v-form-container').classList.add('active');
-  setTimeout(() => document.getElementById('v-name').focus(), 50);
-}
-
-function hideVehicleForm() {
-  document.getElementById('v-form-container').classList.remove('active');
-  document.getElementById('v-list-container').style.display = 'block';
-}
-
-function deleteVehicle(id) {
-  customConfirm(`Are you sure you want to permanently delete "${appData.vehicles[id].name}" and ALL its logged data?`, () => {
-    delete appData.vehicles[id];
-    
-    // Failsafe: If last vehicle deleted, restore a default Vehicle 1
-    if (Object.keys(appData.vehicles).length === 0) {
-      appData.vehicles['v1'] = { name: 'Vehicle 1', type: 'bike', fuelEntries: [], spendEntries: [], oilEntries: [], lastRate: null };
-      appData.currentVehicleId = 'v1';
-      showToast('Last vehicle deleted. Default Vehicle restored.', 'success');
-    } else if (appData.currentVehicleId === id) {
-       // Auto switch if deleting the active vehicle
-       appData.currentVehicleId = Object.keys(appData.vehicles)[0];
-       showToast('Active vehicle deleted. Switched to next available.', 'success');
-    } else {
-       showToast('Vehicle deleted successfully.', 'success');
-    }
-    
-    saveLocal();
-    populateVehicleSelect();
-    refreshUI();
-    renderVehicleList();
-  });
-}
-
-function saveVehicle() {
-  const name = document.getElementById('v-name').value.trim();
-  const type = document.getElementById('v-type').value;
-  const editId = document.getElementById('v-edit-id').value;
-  
-  if(!name) return showToast("Vehicle name is required.");
-  
-  if (editId) {
-     appData.vehicles[editId].name = name; 
-     appData.vehicles[editId].type = type;
-  } else {
-     const newId = 'v' + Date.now();
-     appData.vehicles[newId] = { name, type, fuelEntries: [], spendEntries: [], oilEntries: [], lastRate: null };
-     appData.currentVehicleId = newId;
-  }
-  
-  saveLocal(); 
-  populateVehicleSelect(); 
-  refreshUI();
-  hideVehicleForm();
-  renderVehicleList();
-}
-
-
-// LOGIC METHODS
-function calcQty() {
-  const amt = parseFloat(document.getElementById('f-amount').value);
-  const rate = parseFloat(document.getElementById('f-rate').value);
-  const display = document.getElementById('qty-display');
-  if (amt > 0 && rate > 0) display.innerHTML = `Calculated Quantity: <span>${(amt/rate).toFixed(2)} L</span>`;
-  else display.innerHTML = '';
-}
-
+// App Logic
 function saveFuel() {
-  const date = document.getElementById('f-date').value;
-  const amount = parseFloat(document.getElementById('f-amount').value);
-  const rate = parseFloat(document.getElementById('f-rate').value);
-  if (!date || date.length !== 10 || isNaN(amount) || isNaN(rate)) return showToast('Please input valid Date (DD/MM/YYYY), Amount, and Rate');
-  cv().lastRate = rate;
-  fData().push({ id: Date.now(), date, type: 'fuel', amount, rate, qty: amount/rate });
-  closeModal('fuelModal'); recalcMileage(); refreshUI(); saveLocal(); showToast('Fuel log saved!', 'success');
+  fData().push({ id: Date.now(), date: document.getElementById('f-date').value, type: 'fuel', amount: parseFloat(document.getElementById('f-amount').value), rate: parseFloat(document.getElementById('f-rate').value), qty: parseFloat(document.getElementById('f-amount').value)/parseFloat(document.getElementById('f-rate').value) });
+  closeModal('fuelModal'); saveLocal(); showToast('Saved!', 'success');
 }
-
 function saveReserve() {
-  const date = document.getElementById('r-date').value;
-  const odo = parseFloat(document.getElementById('r-odo').value);
-  if (!date || date.length !== 10 || isNaN(odo)) return showToast('Please input valid Date (DD/MM/YYYY) and Odometer');
-  fData().push({ id: Date.now(), date, odo, type: 'reserve' });
-  closeModal('reserveModal'); recalcMileage(); refreshUI(); saveLocal(); showToast('Reserve point logged!', 'success');
+  fData().push({ id: Date.now(), date: document.getElementById('r-date').value, odo: parseFloat(document.getElementById('r-odo').value), type: 'reserve' });
+  closeModal('reserveModal'); saveLocal(); showToast('Saved!', 'success');
 }
-
-function deleteFuelEntry(id) { 
-  customConfirm("Delete this fuel log entry permanently?", () => {
-    cv().fuelEntries = fData().filter(e => e.id !== id); recalcMileage(); refreshUI(); saveLocal();
-  });
-}
-
-function recalcMileage() {
-  let arr = fData();
-  arr.sort((a, b) => parseD(a.date) - parseD(b.date) || a.id - b.id);
-  let lastReserveOdo = null, accumulatedQty = 0;
-  for (let i = 0; i < arr.length; i++) {
-    const e = arr[i]; e.dist = null; e.mileage = null; e.accumulatedQty = null;
-    if (e.type === 'fuel') {
-      if (lastReserveOdo !== null) accumulatedQty += e.qty;
-    } else if (e.type === 'reserve') {
-      if (lastReserveOdo !== null && accumulatedQty > 0) { e.dist = e.odo - lastReserveOdo; e.accumulatedQty = accumulatedQty; e.mileage = e.dist / e.accumulatedQty; }
-      lastReserveOdo = e.odo; accumulatedQty = 0;
-    }
-  }
-}
-
 function saveSpend() {
-  const date = document.getElementById('s-date').value;
-  const cat = document.getElementById('s-cat').value;
-  const desc = document.getElementById('s-desc').value.trim();
-  const amount = parseFloat(document.getElementById('s-amount').value);
-  if (!date || date.length !== 10 || !desc || isNaN(amount)) return showToast('Please fill all fields correctly (Date DD/MM/YYYY)');
-  sData().push({ date, cat, desc, amount, id: Date.now() });
-  closeModal('spendModal'); refreshUI(); saveLocal(); showToast('Maintenance record saved!', 'success');
+  sData().push({ id: Date.now(), date: document.getElementById('s-date').value, cat: document.getElementById('s-cat').value, desc: document.getElementById('s-desc').value, amount: parseFloat(document.getElementById('s-amount').value) });
+  closeModal('spendModal'); saveLocal(); showToast('Saved!', 'success');
 }
-
-function deleteSpend(id) { 
-  customConfirm("Delete this maintenance record?", () => {
-    cv().spendEntries = sData().filter(e => e.id !== id); refreshUI(); saveLocal();
-  });
-}
-
 function saveOil() {
-  const date = document.getElementById('oil-date').value;
-  const odo = parseFloat(document.getElementById('oil-odo').value);
-  let amount = parseFloat(document.getElementById('oil-amount').value);
-  if (isNaN(amount)) amount = null;
-  if (!date || date.length !== 10 || isNaN(odo)) return showToast('Valid Date (DD/MM/YYYY) and Odometer are required.');
-  
-  oData().push({ id: Date.now(), date, odo, amount });
-  closeModal('oilModal'); refreshUI(); saveLocal(); showToast('Oil change logged!', 'success');
+  oData().push({ id: Date.now(), date: document.getElementById('oil-date').value, odo: parseFloat(document.getElementById('oil-odo').value) });
+  closeModal('oilModal'); saveLocal(); showToast('Saved!', 'success');
 }
 
-function deleteOilEntry(id) { 
-  customConfirm("Delete this oil change record?", () => {
-    cv().oilEntries = oData().filter(e => e.id !== id); refreshUI(); saveLocal();
-  });
-}
+function parseD(dStr) { const p = dStr.split('/'); return new Date(`${p[2]}-${p[1]}-${p[0]}`); }
 
-function checkOilAlert() {
-  const oilArr = oData();
-  const banner = document.getElementById('oil-alert-banner');
-  if (!oilArr.length) { banner.style.display = 'none'; return; }
-  
-  const lastOilOdo = Math.max(...oilArr.map(e => e.odo));
-  let currentOdo = lastOilOdo;
-  fData().forEach(e => { if(e.odo > currentOdo) currentOdo = e.odo; });
-  
-  if (currentOdo - lastOilOdo >= 3000) {
-      banner.style.display = 'flex';
-      document.getElementById('oil-alert-text').innerText = `Oil Change Overdue! It has been ${Math.round(currentOdo - lastOilOdo).toLocaleString('en-IN')} km since your last recorded replacement.`;
-  } else {
-      banner.style.display = 'none';
-  }
-}
-
-// RENDER UI
 function refreshUI() {
-  renderFuel(); renderSpend(); renderOil(); checkOilAlert();
-  if(document.getElementById('panel-overview').classList.contains('active')) renderOverview();
-}
+  const arr = fData().sort((a, b) => parseD(a.date) - parseD(b.date));
+  let lRes = null, aQty = 0;
+  arr.forEach(e => { if(e.type === 'fuel') { if(lRes) aQty+=e.qty; } else { if(lRes && aQty>0) { e.dist = e.odo-lRes; e.mileage = e.dist/aQty; } lRes=e.odo; aQty=0; }});
 
-function renderFuel() {
-  const arr = fData();
-  const openRes = [...arr].reverse().find(e => e.type === 'reserve' && !e.mileage);
-  const isPending = openRes && arr[arr.length-1].id !== openRes.id;
-  
-  const banner = document.getElementById('reserve-pending');
-  if (isPending) { banner.style.display = 'flex'; document.getElementById('reserve-pending-km').innerText = openRes.odo.toLocaleString('en-IN'); }
-  else { banner.style.display = 'none'; }
-
-  const fuels = arr.filter(e => e.type === 'fuel');
-  const reserves = arr.filter(e => e.type === 'reserve' && e.mileage);
-  
-  document.getElementById('m-avg').innerText = reserves.length ? (reserves.reduce((s,e)=>s+e.mileage,0)/reserves.length).toFixed(1) : '—';
-  document.getElementById('m-best').innerText = reserves.length ? Math.max(...reserves.map(e=>e.mileage)).toFixed(1) : '—';
-  document.getElementById('m-fuel').innerText = fuels.length ? fuels.reduce((s,e)=>s+e.qty,0).toFixed(1) : '—';
-  document.getElementById('m-spent').innerText = fuels.length ? Math.round(fuels.reduce((s,e)=>s+e.amount,0)).toLocaleString('en-IN') : '—';
-
-  const tbody = document.getElementById('fuel-log-body');
-  const empty = document.getElementById('fuel-empty');
-  const displayArr = [...arr].sort((a, b) => parseD(b.date) - parseD(a.date) || b.id - a.id);
-
-  if (!displayArr.length) { tbody.innerHTML = ''; empty.style.display = 'block'; }
-  else {
-    empty.style.display = 'none';
-    tbody.innerHTML = displayArr.map((e, i) => {
-      const anim = `style="animation-delay: ${i * 0.03}s"`;
-      if (e.type === 'reserve') return `<tr class="reserve-row row-animate" ${anim}><td>${e.date}</td><td><span class="badge badge-reserve"><i class="ti ti-alert-triangle"></i> Reserve</span></td><td>${e.odo.toLocaleString('en-IN')}</td><td>${e.dist?e.dist:'—'}</td><td>${e.accumulatedQty?e.accumulatedQty.toFixed(2):'—'}</td><td>—</td><td>—</td><td>${e.mileage?`<span class="badge badge-good">${e.mileage.toFixed(1)}</span>`:'—'}</td><td><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`;
-      return `<tr class="row-animate" ${anim}><td>${e.date}</td><td><span class="badge badge-fuel"><i class="ti ti-droplet"></i> Fuel</span></td><td>—</td><td>—</td><td>${e.qty.toFixed(2)}</td><td>₹${e.rate.toFixed(2)}</td><td>₹${e.amount.toLocaleString('en-IN')}</td><td>—</td><td><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`;
-    }).join('');
-  }
-
-  if(charts.mil) charts.mil.destroy();
-  charts.mil = new Chart(document.getElementById('chart-mileage'), { type: 'line', data: { labels: reserves.map((_,i)=>`Cycle ${i+1}`), datasets: [{ data: reserves.map(e=>e.mileage), borderColor: '#0ea5e9', backgroundColor: 'rgba(14, 165, 233, 0.1)', fill: true, tension: 0.4, pointBackgroundColor: '#0ea5e9', pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { color: 'rgba(255,255,255,0.05)' } } } } });
-  
-  if(charts.fsp) charts.fsp.destroy();
-  charts.fsp = new Chart(document.getElementById('chart-spend'), { type: 'bar', data: { labels: fuels.map((_,i)=>`Fill #${i+1}`), datasets: [{ data: fuels.map(e=>e.amount), backgroundColor: '#0ea5e9', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } } });
-}
-
-function renderSpend() {
-  const arr = sData();
-  document.getElementById('s-total').innerText = arr.length ? Math.round(arr.reduce((s,e)=>s+e.amount,0)).toLocaleString('en-IN') : '—';
-  document.getElementById('s-count').innerText = arr.length || '—';
-
-  const tbody = document.getElementById('spend-log-body');
-  if (!arr.length) { tbody.innerHTML = ''; document.getElementById('spend-empty').style.display = 'block'; }
-  else {
-    document.getElementById('spend-empty').style.display = 'none';
-    tbody.innerHTML = [...arr].sort((a,b)=>parseD(b.date)-parseD(a.date)).map((e, i) => `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${e.date}</td><td><span class="badge" style="background:rgba(139, 92, 246, 0.15);color:#c4b5fd;border:1px solid rgba(139, 92, 246, 0.3)">${e.cat}</span></td><td>${e.desc}</td><td>₹${e.amount.toLocaleString('en-IN')}</td><td><button class="del-btn" onclick="deleteSpend(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`).join('');
-  }
-
-  const catColors = { 'Service':'#3b82f6','Spare part':'#8b5cf6','Repair':'#f59e0b','Tyre':'#10b981','Insurance':'#ec4899','Other':'#64748b' };
-  let catTotals = {}; arr.forEach(e => catTotals[e.cat] = (catTotals[e.cat]||0) + e.amount);
-  
-  if(charts.cat) charts.cat.destroy();
-  charts.cat = new Chart(document.getElementById('chart-cat'), { type: 'doughnut', data: { labels: Object.keys(catTotals), datasets: [{ data: Object.values(catTotals), backgroundColor: Object.keys(catTotals).map(c=>catColors[c]||'#64748b'), borderWidth:0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins:{legend:{position:'right',labels:{color:'#f8fafc', font:{family:"Inter", size:13}}}} } });
-  
-  if(charts.stl) charts.stl.destroy();
-  const sorted = [...arr].sort((a,b)=>parseD(a.date)-parseD(b.date));
-  charts.stl = new Chart(document.getElementById('chart-timeline'), { type: 'bar', data: { labels: sorted.map((_,i)=>`#${i+1}`), datasets: [{ data: sorted.map(e=>e.amount), backgroundColor: sorted.map(e=>catColors[e.cat]||'#64748b'), borderRadius:6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } } });
-}
-
-function renderOil() {
-  const arr = oData();
-  const sorted = [...arr].sort((a,b)=>parseD(b.date)-parseD(a.date));
-  
-  if (sorted.length > 0) {
-     const lastOil = sorted[0].odo;
-     let currentOdo = lastOil;
-     fData().forEach(e => { if(e.odo > currentOdo) currentOdo = e.odo; });
-     
-     document.getElementById('oil-last-odo').innerText = lastOil.toLocaleString('en-IN');
-     document.getElementById('oil-dist').innerText = Math.round(currentOdo - lastOil).toLocaleString('en-IN');
-  } else {
-     document.getElementById('oil-last-odo').innerText = '—';
-     document.getElementById('oil-dist').innerText = '—';
-  }
-
-  const tbody = document.getElementById('oil-log-body');
-  if (!sorted.length) { tbody.innerHTML = ''; document.getElementById('oil-empty').style.display = 'block'; }
-  else {
-    document.getElementById('oil-empty').style.display = 'none';
-    tbody.innerHTML = sorted.map((e, i) => `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${e.date}</td><td>${e.odo.toLocaleString('en-IN')}</td><td>${e.amount ? '₹'+e.amount.toLocaleString('en-IN') : '—'}</td><td><button class="del-btn" onclick="deleteOilEntry(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`).join('');
-  }
-}
-
-function renderOverview() {
-  const fTotal = fData().filter(e=>e.type==='fuel').reduce((s,e)=>s+e.amount,0);
-  const mTotal = sData().reduce((s,e)=>s+e.amount,0);
-  const oTotal = oData().reduce((s,e)=>s+(e.amount||0),0);
-  const combinedMaint = mTotal + oTotal;
-  
-  document.getElementById('o-fuel').innerText = fTotal ? '₹'+fTotal.toLocaleString('en-IN') : '—';
-  document.getElementById('o-maint').innerText = combinedMaint ? '₹'+combinedMaint.toLocaleString('en-IN') : '—';
-  document.getElementById('o-grand').innerText = (fTotal+combinedMaint) ? '₹'+(fTotal+combinedMaint).toLocaleString('en-IN') : '—';
-
-  if(charts.opie) charts.opie.destroy();
-  charts.opie = new Chart(document.getElementById('chart-overview-pie'), { type: 'doughnut', data: { labels: ['Fuel','Maintenance & Oil'], datasets: [{ data: [fTotal, combinedMaint], backgroundColor: ['#0ea5e9','#8b5cf6'], borderWidth:0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins:{legend:{position:'bottom',labels:{color:'#f8fafc', padding: 20}}} } });
-
-  let byMo = {};
-  fData().filter(e=>e.type==='fuel').forEach(e => { let m=getMo(e.date); byMo[m]=byMo[m]||{f:0,m:0}; byMo[m].f+=e.amount; });
-  sData().forEach(e => { let m=getMo(e.date); byMo[m]=byMo[m]||{f:0,m:0}; byMo[m].m+=e.amount; });
-  oData().forEach(e => { if(e.amount) { let m=getMo(e.date); byMo[m]=byMo[m]||{f:0,m:0}; byMo[m].m+=e.amount; }});
-  let mos = Object.keys(byMo).sort();
-
-  if(charts.omo) charts.omo.destroy();
-  
-  const mLabels = mos.map(m => { 
-     const p = m.split('-'); 
-     if(p.length === 2) return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(p[1])-1]+' '+p[0].slice(2); 
-     return m;
-  });
-
-  charts.omo = new Chart(document.getElementById('chart-monthly'), { type: 'bar', data: { labels: mLabels, datasets: [{ label: 'Fuel', data: mos.map(m=>byMo[m].f), backgroundColor: '#0ea5e9', borderRadius: 4 }, { label: 'Maintenance & Oil', data: mos.map(m=>byMo[m].m), backgroundColor: '#8b5cf6', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x:{stacked:true, grid:{display:false}}, y:{stacked:true, grid:{color:'rgba(255,255,255,0.05)'}} } } });
-}
-
-// EXCEL IMPORT/EXPORT
-function exportData() {
-  if(typeof XLSX === 'undefined') return showToast("Excel library loading, please wait...");
-  const wb = XLSX.utils.book_new();
-  
-  const defaultF = [{ Date: "", Type: "", Odometer: "", Amount: "", Rate: "", Qty: "" }];
-  const defaultS = [{ Date: "", Category: "", Description: "", Amount: "" }];
-  const defaultO = [{ Date: "", Odometer: "", Amount: "" }];
-  
-  const fExport = fData().length ? fData().map(e => ({ Date: e.date, Type: e.type, Odometer: e.odo||'', Amount: e.amount||'', Rate: e.rate||'', Qty: e.qty||'' })) : defaultF;
-  const sExport = sData().length ? sData().map(e => ({ Date: e.date, Category: e.cat, Description: e.desc, Amount: e.amount })) : defaultS;
-  const oExport = oData().length ? oData().map(e => ({ Date: e.date, Odometer: e.odo, Amount: e.amount||'' })) : defaultO;
-  
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(fExport), "Fuel_Logs");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sExport), "Maintenance");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(oExport), "Oil_Logs");
-  
-  XLSX.writeFile(wb, `${cv().name.replace(/\s+/g, '_')}_Telemetry.xlsx`);
-}
-
-function importData(event) {
-  const file = event.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const data = e.target.result;
-      const wb = XLSX.read(data, {type: 'binary'});
-      
-      if(wb.SheetNames.includes("Fuel_Logs")) {
-        XLSX.utils.sheet_to_json(wb.Sheets["Fuel_Logs"]).forEach(r => {
-          if(r.Date && r.Type) cv().fuelEntries.push({ id: Date.now()+Math.random(), date: r.Date, type: r.Type.toLowerCase(), odo: r.Odometer?parseFloat(r.Odometer):null, amount: r.Amount?parseFloat(r.Amount):null, rate: r.Rate?parseFloat(r.Rate):null, qty: r.Qty?parseFloat(r.Qty):null });
-        });
-      }
-      if(wb.SheetNames.includes("Maintenance")) {
-        XLSX.utils.sheet_to_json(wb.Sheets["Maintenance"]).forEach(r => {
-          if(r.Date && r.Category && r.Amount) cv().spendEntries.push({ id: Date.now()+Math.random(), date: r.Date, cat: r.Category, desc: r.Description||'', amount: parseFloat(r.Amount) });
-        });
-      }
-      if(wb.SheetNames.includes("Oil_Logs")) {
-        XLSX.utils.sheet_to_json(wb.Sheets["Oil_Logs"]).forEach(r => {
-          if(r.Date && r.Odometer) cv().oilEntries.push({ id: Date.now()+Math.random(), date: r.Date, odo: parseFloat(r.Odometer), amount: r.Amount?parseFloat(r.Amount):null });
-        });
-      }
-      recalcMileage(); saveLocal(); refreshUI();
-      showToast("Data imported successfully!", "success");
-    } catch(err) {
-      showToast("Error parsing file. Please ensure it matches the exported template.");
-    }
-  };
-  reader.readAsBinaryString(file);
-  event.target.value = ''; 
+  document.getElementById('fuel-log-body').innerHTML = arr.reverse().map(e => `<tr><td>${e.date}</td><td>${e.type}</td><td>${e.odo||'—'}</td><td>${e.qty?e.qty.toFixed(2):'—'}</td><td>${e.amount||'—'}</td><td>${e.mileage?e.mileage.toFixed(1):'—'}</td><td></td></tr>`).join('');
+  document.getElementById('spend-log-body').innerHTML = sData().map(e => `<tr><td>${e.date}</td><td>${e.cat}</td><td>${e.desc}</td><td>₹${e.amount}</td><td></td></tr>`).join('');
+  document.getElementById('oil-log-body').innerHTML = oData().map(e => `<tr><td>${e.date}</td><td>${e.odo}</td><td>—</td><td></td></tr>`).join('');
 }
 
 initApp();
