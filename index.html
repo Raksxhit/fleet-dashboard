@@ -687,6 +687,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
 <script>
 Chart.defaults.color = '#94a3b8';
 Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
@@ -757,18 +760,52 @@ let appData = {
 
 let currentTotpSetup = null; 
 
-// INITIALIZATION
-function initApp() {
-  const saved = localStorage.getItem('bikeDataStore');
-  if(saved) {
-    let parsed = JSON.parse(saved);
-    appData = { ...appData, ...parsed }; 
-    for (let vId in appData.vehicles) {
-       if (!appData.vehicles[vId].type) appData.vehicles[vId].type = 'bike';
-       if (!appData.vehicles[vId].oilEntries) appData.vehicles[vId].oilEntries = [];
+// ==================================================
+// FIREBASE CONFIGURATION INJECTED HERE
+// ==================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBF_q_n5T8SvyM4QGEcCEm3428rJGCcad0",
+  authDomain: "myfleetcloud-1fad6.firebaseapp.com",
+  projectId: "myfleetcloud-1fad6",
+  storageBucket: "myfleetcloud-1fad6.firebasestorage.app",
+  messagingSenderId: "495153939884",
+  appId: "1:495153939884:web:4e5c95882f6e016777a609"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// We will store all data in a single document for your dashboard
+const USER_DOC_ID = "my_fleet_data"; 
+
+// INITIALIZATION (Cloud Fetch)
+async function initApp() {
+  try {
+    // 1. Try to fetch data from Firebase
+    const docRef = await db.collection("telemetry").doc(USER_DOC_ID).get();
+    
+    if (docRef.exists) {
+      let parsed = docRef.data();
+      appData = { ...appData, ...parsed }; 
+      for (let vId in appData.vehicles) {
+         if (!appData.vehicles[vId].type) appData.vehicles[vId].type = 'bike';
+         if (!appData.vehicles[vId].oilEntries) appData.vehicles[vId].oilEntries = [];
+      }
+    } else {
+      // 2. If it's a brand new database, save the default initial state
+      saveLocal();
     }
-  } else {
-    saveLocal();
+  } catch (error) {
+    console.error("Firebase fetch error:", error);
+    showToast("Cloud fetch failed. Loading offline backup.", "error");
+    
+    // 3. Failsafe: Load offline backup if Firebase is blocked or offline
+    const saved = localStorage.getItem('bikeDataStore');
+    if(saved) {
+      let parsed = JSON.parse(saved);
+      appData = { ...appData, ...parsed };
+    }
   }
   
   if(sessionStorage.getItem('isLoggedIn') === 'true') { 
@@ -845,7 +882,7 @@ function logout() {
 }
 
 // ----------------------------------------------------
-// CLOUD SYNC ANIMATION LOGIC
+// CLOUD SYNC LOGIC
 // ----------------------------------------------------
 function triggerCloudSyncAnimation() {
   const indicator = document.getElementById('sync-indicator');
@@ -854,7 +891,7 @@ function triggerCloudSyncAnimation() {
   indicator.classList.remove('sync-success');
   indicator.classList.add('sync-updating');
   
-  // Simulate network delay (0.8s to 1.5s)
+  // Simulate network delay for UI responsiveness (800ms to 1500ms)
   const syncDelay = 800 + Math.random() * 700;
   
   setTimeout(() => {
@@ -870,24 +907,28 @@ function triggerCloudSyncAnimation() {
   }, syncDelay);
 }
 
-// Replaced simple saveLocal with Animation Trigger
+// SAVE DATA (Cloud Push with Animation)
 function saveLocal() { 
-  // For Local testing before firebase hookup:
+  // 1. Always keep a local backup in case of offline usage
   localStorage.setItem('bikeDataStore', JSON.stringify(appData)); 
   
-  // FIREBASE TODO: Replace above line with Firestore setDoc()
-  /*
-    db.collection("users").doc(userId).set(appData)
-      .then(() => {
-         triggerCloudSyncAnimation();
-      })
-      .catch((error) => {
-         showToast("Sync Failed!", "error");
-      });
-  */
-  
-  // Trigger animation locally for now
+  // 2. Trigger the neon yellow syncing animation
   triggerCloudSyncAnimation();
+  
+  // 3. Push to Firebase Firestore
+  db.collection("telemetry").doc(USER_DOC_ID).set(appData)
+    .then(() => {
+       console.log("Successfully synced to cloud.");
+       // Note: The green success animation is handled via setTimeout in triggerCloudSyncAnimation
+    })
+    .catch((error) => {
+       console.error("Cloud Sync Failed: ", error);
+       showToast("Cloud Sync Failed!", "error");
+       
+       // Force stop the animation if it errors out
+       const indicator = document.getElementById('sync-indicator');
+       indicator.classList.remove('sync-updating', 'sync-success');
+    });
 }
 // ----------------------------------------------------
 
