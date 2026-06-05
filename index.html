@@ -295,7 +295,7 @@
           <div class="dropdown-content" id="optionsMenu">
             <a onclick="openManageVehiclesModal()"><i class="ti ti-car"></i> Manage Vehicles</a>
             <a onclick="exportData()"><i class="ti ti-download"></i> Export Data (Excel)</a>
-            <a onclick="triggerImport()"><i class="ti ti-upload"></i> Import Data (Excel)</a>
+            <a onclick="document.getElementById('import-file').click()"><i class="ti ti-upload"></i> Import Data (Excel)</a>
             <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 8px 0;"></div>
             <a onclick="openPasswordModal()"><i class="ti ti-shield-lock"></i> Change Password / 2FA</a>
           </div>
@@ -956,6 +956,7 @@ function saveVehicle() {
 
 // --- DATA ENTRY & LOGIC ---
 
+// Debounce for input fields to prevent excessive rendering
 let calcTimeout;
 function debounceCalcQty() {
   clearTimeout(calcTimeout);
@@ -1228,84 +1229,59 @@ function verifyAndChangePassword() {
   }
 }
 
-// --- EXCEL LOGIC (OPTIMIZED FOR UI RESPONSE) ---
-
-function triggerImport() {
-  document.getElementById("optionsMenu").classList.remove('show');
-  document.getElementById('import-file').click();
-}
-
+// --- EXCEL LOGIC ---
 function exportData() {
-  document.getElementById("optionsMenu").classList.remove('show');
-  
   if(typeof XLSX === 'undefined') return showToast("Excel library loading, please wait...");
+  const wb = XLSX.utils.book_new();
   
-  showToast("Generating Excel file...", "success");
-
-  // Yield the main thread so the UI toast can render and menu can close
-  setTimeout(() => {
-    const wb = XLSX.utils.book_new();
-    const v = cv(); // Cache lookup
-    
-    const defaultF = [{ Date: "", Type: "", Odometer: "", Amount: "", Rate: "", Qty: "" }];
-    const defaultS = [{ Date: "", Category: "", Description: "", Amount: "" }];
-    const defaultO = [{ Date: "", Odometer: "", Amount: "" }];
-    
-    const fExport = v.fuelEntries.length ? v.fuelEntries.map(e => ({ Date: e.date, Type: e.type, Odometer: e.odo||'', Amount: e.amount||'', Rate: e.rate||'', Qty: e.qty||'' })) : defaultF;
-    const sExport = v.spendEntries.length ? v.spendEntries.map(e => ({ Date: e.date, Category: e.cat, Description: e.desc, Amount: e.amount })) : defaultS;
-    const oExport = v.oilEntries.length ? v.oilEntries.map(e => ({ Date: e.date, Odometer: e.odo, Amount: e.amount||'' })) : defaultO;
-    
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(fExport), "Fuel_Logs");
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sExport), "Maintenance");
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(oExport), "Oil_Logs");
-    
-    XLSX.writeFile(wb, `${v.name.replace(/\s+/g, '_')}_Telemetry.xlsx`);
-  }, 50);
+  const defaultF = [{ Date: "", Type: "", Odometer: "", Amount: "", Rate: "", Qty: "" }];
+  const defaultS = [{ Date: "", Category: "", Description: "", Amount: "" }];
+  const defaultO = [{ Date: "", Odometer: "", Amount: "" }];
+  
+  const fExport = fData().length ? fData().map(e => ({ Date: e.date, Type: e.type, Odometer: e.odo||'', Amount: e.amount||'', Rate: e.rate||'', Qty: e.qty||'' })) : defaultF;
+  const sExport = sData().length ? sData().map(e => ({ Date: e.date, Category: e.cat, Description: e.desc, Amount: e.amount })) : defaultS;
+  const oExport = oData().length ? oData().map(e => ({ Date: e.date, Odometer: e.odo, Amount: e.amount||'' })) : defaultO;
+  
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(fExport), "Fuel_Logs");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sExport), "Maintenance");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(oExport), "Oil_Logs");
+  
+  XLSX.writeFile(wb, `${cv().name.replace(/\s+/g, '_')}_Telemetry.xlsx`);
 }
 
 function importData(event) {
   const file = event.target.files[0];
   if(!file) return;
-  
-  showToast("Reading file...", "success");
   const reader = new FileReader();
-  
   reader.onload = function(e) {
-    // Yield the main thread to prevent UI freezing during JSON parsing
-    setTimeout(() => {
-      try {
-        const data = e.target.result;
-        const wb = XLSX.read(data, {type: 'binary'});
-        const v = cv(); // Cache lookup
-        
-        if(wb.SheetNames.includes("Fuel_Logs")) {
-          XLSX.utils.sheet_to_json(wb.Sheets["Fuel_Logs"]).forEach(r => {
-            if(r.Date && r.Type) v.fuelEntries.push({ id: Date.now()+Math.random(), date: r.Date, type: r.Type.toLowerCase(), odo: r.Odometer?parseFloat(r.Odometer):null, amount: r.Amount?parseFloat(r.Amount):null, rate: r.Rate?parseFloat(r.Rate):null, qty: r.Qty?parseFloat(r.Qty):null });
-          });
-        }
-        if(wb.SheetNames.includes("Maintenance")) {
-          XLSX.utils.sheet_to_json(wb.Sheets["Maintenance"]).forEach(r => {
-            if(r.Date && r.Category && r.Amount) v.spendEntries.push({ id: Date.now()+Math.random(), date: r.Date, cat: r.Category, desc: r.Description||'', amount: parseFloat(r.Amount) });
-          });
-        }
-        if(wb.SheetNames.includes("Oil_Logs")) {
-          XLSX.utils.sheet_to_json(wb.Sheets["Oil_Logs"]).forEach(r => {
-            if(r.Date && r.Odometer) v.oilEntries.push({ id: Date.now()+Math.random(), date: r.Date, odo: parseFloat(r.Odometer), amount: r.Amount?parseFloat(r.Amount):null });
-          });
-        }
-        
-        recalcMileage(); 
-        saveLocal(); 
-        refreshUI();
-        showToast("Data imported successfully!", "success");
-      } catch(err) {
-        console.error(err);
-        showToast("Error parsing file. Please ensure it matches the exported template.");
+    try {
+      const data = e.target.result;
+      const wb = XLSX.read(data, {type: 'binary'});
+      
+      if(wb.SheetNames.includes("Fuel_Logs")) {
+        XLSX.utils.sheet_to_json(wb.Sheets["Fuel_Logs"]).forEach(r => {
+          if(r.Date && r.Type) cv().fuelEntries.push({ id: Date.now()+Math.random(), date: r.Date, type: r.Type.toLowerCase(), odo: r.Odometer?parseFloat(r.Odometer):null, amount: r.Amount?parseFloat(r.Amount):null, rate: r.Rate?parseFloat(r.Rate):null, qty: r.Qty?parseFloat(r.Qty):null });
+        });
       }
-    }, 50);
+      if(wb.SheetNames.includes("Maintenance")) {
+        XLSX.utils.sheet_to_json(wb.Sheets["Maintenance"]).forEach(r => {
+          if(r.Date && r.Category && r.Amount) cv().spendEntries.push({ id: Date.now()+Math.random(), date: r.Date, cat: r.Category, desc: r.Description||'', amount: parseFloat(r.Amount) });
+        });
+      }
+      if(wb.SheetNames.includes("Oil_Logs")) {
+        XLSX.utils.sheet_to_json(wb.Sheets["Oil_Logs"]).forEach(r => {
+          if(r.Date && r.Odometer) cv().oilEntries.push({ id: Date.now()+Math.random(), date: r.Date, odo: parseFloat(r.Odometer), amount: r.Amount?parseFloat(r.Amount):null });
+        });
+      }
+      recalcMileage(); saveLocal(); refreshUI();
+      showToast("Data imported successfully!", "success");
+    } catch(err) {
+      console.error(err);
+      showToast("Error parsing file. Please ensure it matches the exported template.");
+    }
   };
   reader.readAsBinaryString(file);
-  event.target.value = ''; // Reset input to allow re-importing the same file
+  event.target.value = ''; 
 }
 
 // Boot
