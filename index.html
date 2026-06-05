@@ -64,6 +64,11 @@
     position: fixed; inset: 0; background: var(--bg-base); z-index: 9999;
     display: flex; align-items: center; justify-content: center;
   }
+  
+  /* ANTI-FLICKER STATES */
+  body.logged-in #login-screen { display: none !important; }
+  body.logged-in .app-container { display: block !important; }
+
   .login-card { 
     background: var(--bg-surface); border: 1px solid var(--border-light); padding: 48px 40px; 
     border-radius: var(--radius-xl); width: 100%; max-width: 380px; text-align: center; 
@@ -231,18 +236,17 @@
   .dropdown-content a i { color: var(--text-secondary); font-size: 18px; }
   .dropdown-content a:hover { background: var(--bg-surface-hover); color: var(--accent-blue); }
   .dropdown-content a:hover i { color: var(--accent-blue); }
+
   /* =========================================
      DESKTOP HOVER DROPDOWNS 
      ========================================= */
   @media (hover: hover) and (pointer: fine) {
-    /* Trigger the dropdowns on hover */
     .custom-dropdown:hover .custom-dropdown-options,
     .dropdown:hover .dropdown-content {
       display: block;
       animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
     
-    /* Creates an invisible bridge across the 8px gap so the menu doesn't disappear while moving your mouse down */
     .custom-dropdown::after,
     .dropdown::after {
       content: '';
@@ -255,6 +259,7 @@
       z-index: 9999;
     }
   }
+  
   /* Animations */
   @keyframes fadeUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
@@ -453,6 +458,12 @@
 </style>
 </head>
 <body>
+
+<script>
+  if (sessionStorage.getItem('isLoggedIn') === 'true') {
+    document.body.classList.add('logged-in');
+  }
+</script>
 
 <div id="toast-container"></div>
 
@@ -973,6 +984,7 @@ function attemptLogin() {
 }
 
 function unlockApp() {
+  document.body.classList.add('logged-in'); // Trigger anti-flicker CSS instantly
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-main').style.display = 'block';
   document.getElementById('auth-pwd').value = '';
@@ -982,6 +994,7 @@ function unlockApp() {
 
 function logout() {
   sessionStorage.removeItem('isLoggedIn');
+  document.body.classList.remove('logged-in'); // Remove anti-flicker CSS instantly
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app-main').style.display = 'none';
   setTimeout(() => document.getElementById('auth-pwd').focus(), 100);
