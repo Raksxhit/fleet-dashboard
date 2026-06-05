@@ -249,7 +249,6 @@
 <body>
 
 <script>
-  // Instant Anti-Flicker
   if (sessionStorage.getItem('isLoggedIn') === 'true') {
     document.body.classList.add('logged-in');
   }
@@ -524,9 +523,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
 <script>
-"use strict"; // Enforce strict mode for cleaner, error-free variable declarations
+"use strict";
 
-// --- UTILITIES & SANITIZATION ---
 const utils = {
   escapeHTML: (str) => {
     if(!str) return '';
@@ -542,10 +540,9 @@ const utils = {
   },
   parseDate: (dStr) => {
     if (!dStr) return new Date(0);
-    let str = String(dStr).trim().replace(/-/g, '/'); // Clean up dashes to slashes
+    let str = String(dStr).trim().replace(/-/g, '/');
     if (str.includes('/')) {
       const p = str.split('/');
-      // Ensure 2-digit years become 4-digit (e.g., 26 -> 2026)
       let year = p[2].length === 2 ? `20${p[2]}` : p[2];
       return new Date(`${year}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`); 
     }
@@ -562,13 +559,11 @@ const utils = {
 
 const todayStr = utils.getTodayStr();
 
-// --- STATE MANAGEMENT ---
 let charts = {};
 let currentTotpSetup = null; 
 let isFirstLoad = true;
 let isLocalSaving = false; 
 
-// Initial Default State
 let appData = {
   version: 4,
   password: btoa("Raksh"), 
@@ -579,7 +574,6 @@ let appData = {
   }
 };
 
-// --- FIREBASE INIT ---
 const firebaseConfig = {
   apiKey: "AIzaSyCRNNZzX9LM4mN6m428g9RXLuGETh1Hj3w",
   authDomain: "myfleetcloud-31669.firebaseapp.com",
@@ -589,133 +583,79 @@ const firebaseConfig = {
   appId: "1:371134319589:web:651bc2ff0f27971b55bd0c"
 };
 
-try {
-  firebase.initializeApp(firebaseConfig);
-} catch (e) {
-  console.error("Firebase init failed:", e);
-}
+try { firebase.initializeApp(firebaseConfig); } catch (e) { console.error(e); }
 const db = firebase.firestore();
 const USER_DOC_ID = "my_fleet_data"; 
 
-// --- CORE FUNCTIONS ---
 function initApp() {
   try {
     const docRef = db.collection("telemetry").doc(USER_DOC_ID);
     
-    // REAL-TIME LISTENER
     docRef.onSnapshot((doc) => {
       if (doc.exists) {
         if (!isLocalSaving) {
           const parsed = doc.data();
-          // Ensure structure integrity on sync
           appData = { ...appData, ...parsed }; 
           appData.vehicles = appData.vehicles || {};
           
           for (let vId in appData.vehicles) {
              if (!appData.vehicles[vId].type) appData.vehicles[vId].type = 'bike';
-             // FIX 1: Initializing missing arrays prevents the fatal push() error
              if (!appData.vehicles[vId].oilEntries) appData.vehicles[vId].oilEntries = [];
              if (!appData.vehicles[vId].fuelEntries) appData.vehicles[vId].fuelEntries = [];
              if (!appData.vehicles[vId].spendEntries) appData.vehicles[vId].spendEntries = [];
           }
           
           if(sessionStorage.getItem('isLoggedIn') === 'true') { 
-              populateVehicleSelect();
-              refreshUI();
-              if(document.getElementById('manageVehiclesModal').classList.contains('active')) {
-                  renderVehicleList();
-              }
+              populateVehicleSelect(); refreshUI();
+              if(document.getElementById('manageVehiclesModal').classList.contains('active')) renderVehicleList();
           }
         }
       } else if (isFirstLoad) {
         saveLocal(); 
       }
-      
       isFirstLoad = false;
       document.getElementById('connection-dot').classList.remove('offline');
       document.getElementById('connection-text').innerText = 'Live';
-      
     }, (error) => {
-      console.error("Firebase realtime error:", error);
       document.getElementById('connection-dot').classList.add('offline');
       document.getElementById('connection-text').innerText = 'Offline';
-      
-      // Fallback to local storage if offline
       const saved = localStorage.getItem('bikeDataStore');
-      if(saved && isFirstLoad) {
-        appData = { ...appData, ...utils.safeJSONParse(saved, appData) };
-      }
+      if(saved && isFirstLoad) appData = { ...appData, ...utils.safeJSONParse(saved, appData) };
     });
   } catch (error) {
-    console.error("Fatal database error:", error);
     showToast("Database connection failed. Operating in offline mode.", "error");
   }
 
-  // Network Tracking
-  window.addEventListener('offline', () => {
-      document.getElementById('connection-dot').classList.add('offline');
-      document.getElementById('connection-text').innerText = 'Offline';
-  });
-  window.addEventListener('online', () => {
-      document.getElementById('connection-dot').classList.remove('offline');
-      document.getElementById('connection-text').innerText = 'Live';
-  });
+  window.addEventListener('offline', () => { document.getElementById('connection-dot').classList.add('offline'); document.getElementById('connection-text').innerText = 'Offline'; });
+  window.addEventListener('online', () => { document.getElementById('connection-dot').classList.remove('offline'); document.getElementById('connection-text').innerText = 'Live'; });
 
-  if(sessionStorage.getItem('isLoggedIn') === 'true') { 
-      unlockApp(); 
-  } else {
-      setTimeout(() => document.getElementById('auth-pwd').focus(), 100);
-  }
+  if(sessionStorage.getItem('isLoggedIn') === 'true') unlockApp(); 
+  else setTimeout(() => document.getElementById('auth-pwd').focus(), 100);
 
-  initDatePickers();
-  initModalClickOutside();
+  initDatePickers(); initModalClickOutside();
 }
 
 function saveLocal() { 
-  try {
-    localStorage.setItem('bikeDataStore', JSON.stringify(appData)); 
-  } catch(e) {
-    console.error("Local storage quota exceeded or unavailable:", e);
-  }
-  
+  try { localStorage.setItem('bikeDataStore', JSON.stringify(appData)); } catch(e) {}
   triggerCloudSyncAnimation();
   isLocalSaving = true; 
-  
   db.collection("telemetry").doc(USER_DOC_ID).set(appData)
-    .then(() => {
-       setTimeout(() => { isLocalSaving = false; }, 500); 
-    })
-    .catch((error) => {
-       console.error("Cloud Sync Failed: ", error);
-       showToast("Cloud Sync Failed!", "error");
-       isLocalSaving = false;
-       document.getElementById('sync-indicator').classList.remove('sync-updating', 'sync-success');
-    });
+    .then(() => { setTimeout(() => { isLocalSaving = false; }, 500); })
+    .catch(() => { isLocalSaving = false; document.getElementById('sync-indicator').classList.remove('sync-updating', 'sync-success'); });
 }
 
-// --- UI EVENT LISTENERS & HELPERS ---
 function showToast(msg, type = 'error') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.innerHTML = `<i class="ti ${type === 'success' ? 'ti-check' : 'ti-alert-circle'}"></i> ${utils.escapeHTML(msg)}`;
   container.appendChild(toast);
-  setTimeout(() => {
-      toast.classList.add('fade-out');
-      setTimeout(() => toast.remove(), 300);
-  }, 3000);
+  setTimeout(() => { toast.classList.add('fade-out'); setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
 let pendingConfirmCallback = null;
-function customConfirm(msg, callback) {
-  document.getElementById('confirm-msg').innerText = msg; // innerText is safe
-  pendingConfirmCallback = callback;
-  openModal('confirmModal');
-}
-document.getElementById('confirm-yes-btn').addEventListener('click', () => {
-  if (pendingConfirmCallback) pendingConfirmCallback();
-  closeModal('confirmModal');
-});
+function customConfirm(msg, callback) { document.getElementById('confirm-msg').innerText = msg; pendingConfirmCallback = callback; openModal('confirmModal'); }
+document.getElementById('confirm-yes-btn').addEventListener('click', () => { if (pendingConfirmCallback) pendingConfirmCallback(); closeModal('confirmModal'); });
 
 function initDatePickers() {
   flatpickr(".date-picker", { dateFormat: "d/m/Y", allowInput: true, disableMobile: "true" });
@@ -730,80 +670,28 @@ function initDatePickers() {
   });
 }
 
-function initModalClickOutside() {
-  document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('mousedown', function(e) {
-      if (e.target === this) closeModal(this.id);
-    });
-  });
-}
+function initModalClickOutside() { document.querySelectorAll('.modal-overlay').forEach(overlay => { overlay.addEventListener('mousedown', function(e) { if (e.target === this) closeModal(this.id); }); }); }
 
 document.addEventListener('keydown', function(e) {
   const activeModal = document.querySelector('.modal-overlay.active');
-  if (!activeModal && document.getElementById('login-screen').style.display !== 'none' && e.key === 'Enter') {
-      attemptLogin();
-      return;
-  }
+  if (!activeModal && document.getElementById('login-screen').style.display !== 'none' && e.key === 'Enter') return attemptLogin();
   if (!activeModal) return;
   if (e.key === 'Escape') closeModal(activeModal.id);
-  else if (e.key === 'Enter' && !['BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-      e.preventDefault();
-      const actionBtn = activeModal.querySelector('.modal-action-btn:last-child');
-      if (actionBtn) actionBtn.click();
-  }
+  else if (e.key === 'Enter' && !['BUTTON', 'TEXTAREA'].includes(document.activeElement.tagName)) { e.preventDefault(); const actionBtn = activeModal.querySelector('.modal-action-btn:last-child'); if (actionBtn) actionBtn.click(); }
 });
 
-// --- AUTHENTICATION ---
 function attemptLogin() {
   const pwdInput = document.getElementById('auth-pwd');
-  if(btoa(pwdInput.value) === appData.password) {
-    sessionStorage.setItem('isLoggedIn', 'true');
-    unlockApp();
-  } else {
-    pwdInput.classList.add('error-shake');
-    if (navigator.vibrate) navigator.vibrate(200);
-    setTimeout(() => { pwdInput.classList.remove('error-shake'); pwdInput.value = ''; pwdInput.focus(); }, 400);
-  }
+  if(btoa(pwdInput.value) === appData.password) { sessionStorage.setItem('isLoggedIn', 'true'); unlockApp(); }
+  else { pwdInput.classList.add('error-shake'); if (navigator.vibrate) navigator.vibrate(200); setTimeout(() => { pwdInput.classList.remove('error-shake'); pwdInput.value = ''; pwdInput.focus(); }, 400); }
 }
 
-function unlockApp() {
-  document.body.classList.add('logged-in'); 
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app-main').style.display = 'block';
-  document.getElementById('auth-pwd').value = '';
-  populateVehicleSelect();
-  refreshUI();
-}
+function unlockApp() { document.body.classList.add('logged-in'); document.getElementById('login-screen').style.display = 'none'; document.getElementById('app-main').style.display = 'block'; document.getElementById('auth-pwd').value = ''; populateVehicleSelect(); refreshUI(); }
+function logout() { sessionStorage.removeItem('isLoggedIn'); document.body.classList.remove('logged-in'); document.getElementById('login-screen').style.display = 'flex'; document.getElementById('app-main').style.display = 'none'; setTimeout(() => document.getElementById('auth-pwd').focus(), 100); }
 
-function logout() {
-  sessionStorage.removeItem('isLoggedIn');
-  document.body.classList.remove('logged-in'); 
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('app-main').style.display = 'none';
-  setTimeout(() => document.getElementById('auth-pwd').focus(), 100);
-}
-
-// --- DROPDOWNS & NAVIGATION ---
-document.getElementById('options-toggle-btn').addEventListener('click', function(e) {
-  e.stopPropagation();
-  document.getElementById("vehicle-options-list").classList.remove("show"); 
-  document.getElementById("optionsMenu").classList.toggle("show");
-});
-
-function toggleVehicleDropdown(e) {
-  if(e) e.stopPropagation();
-  document.getElementById("optionsMenu").classList.remove("show"); 
-  document.getElementById("vehicle-options-list").classList.toggle("show");
-}
-
-window.onclick = function(event) {
-  if (!event.target.closest('#options-toggle-btn') && !event.target.closest('.dropdown')) {
-    document.getElementById("optionsMenu").classList.remove('show');
-  }
-  if (!event.target.closest('.custom-dropdown')) {
-    document.getElementById("vehicle-options-list").classList.remove('show');
-  }
-}
+document.getElementById('options-toggle-btn').addEventListener('click', function(e) { e.stopPropagation(); document.getElementById("vehicle-options-list").classList.remove("show"); document.getElementById("optionsMenu").classList.toggle("show"); });
+function toggleVehicleDropdown(e) { if(e) e.stopPropagation(); document.getElementById("optionsMenu").classList.remove("show"); document.getElementById("vehicle-options-list").classList.toggle("show"); }
+window.onclick = function(event) { if (!event.target.closest('#options-toggle-btn') && !event.target.closest('.dropdown')) document.getElementById("optionsMenu").classList.remove('show'); if (!event.target.closest('.custom-dropdown')) document.getElementById("vehicle-options-list").classList.remove('show'); }
 
 function switchPanel(name, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -815,198 +703,82 @@ function switchPanel(name, btn) {
 
 function openModal(id) {
   document.getElementById(id).classList.add('active');
-  if(id === 'fuelModal') {
-    document.getElementById('f-date').value = todayStr;
-    if(cv().lastRate) document.getElementById('f-rate').value = cv().lastRate;
-    document.getElementById('qty-display').innerHTML = '';
-  }
+  if(id === 'fuelModal') { document.getElementById('f-date').value = todayStr; if(cv().lastRate) document.getElementById('f-rate').value = cv().lastRate; document.getElementById('qty-display').innerHTML = ''; }
   if(id === 'reserveModal') document.getElementById('r-date').value = todayStr;
   if(id === 'spendModal') document.getElementById('s-date').value = todayStr;
-  if(id === 'oilModal') {
-    document.getElementById('oil-date').value = todayStr;
-    document.getElementById('oil-amount').value = '';
-    document.getElementById('oil-odo').value = '';
-  }
-  setTimeout(() => {
-     const firstInput = document.getElementById(id).querySelector('input:not([type="hidden"]):not(.date-picker), select');
-     if(firstInput) firstInput.focus();
-  }, 50);
+  if(id === 'oilModal') { document.getElementById('oil-date').value = todayStr; document.getElementById('oil-amount').value = ''; document.getElementById('oil-odo').value = ''; }
+  setTimeout(() => { const firstInput = document.getElementById(id).querySelector('input:not([type="hidden"]):not(.date-picker), select'); if(firstInput) firstInput.focus(); }, 50);
 }
-
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
-// --- VEHICLE MANAGEMENT ---
 function cv() { return appData.vehicles[appData.currentVehicleId] || Object.values(appData.vehicles)[0]; }
 function fData() { return cv().fuelEntries; }
 function sData() { return cv().spendEntries; }
 function oData() { return cv().oilEntries; }
 
-function getIconForType(type) {
-    if(type === 'car') return 'ti-car';
-    if(type === 'moped') return 'ti-scooter';
-    return 'ti-motorbike';
-}
+function getIconForType(type) { if(type === 'car') return 'ti-car'; if(type === 'moped') return 'ti-scooter'; return 'ti-motorbike'; }
 
 function populateVehicleSelect() {
   const list = document.getElementById('vehicle-options-list');
-  const currentVehicle = cv();
-  document.getElementById('selected-vehicle-name').innerText = currentVehicle.name;
-
-  list.innerHTML = Object.entries(appData.vehicles).map(([id, v]) => 
-    `<div class="custom-dropdown-option ${id === appData.currentVehicleId ? 'active' : ''}" onclick="selectVehicle('${id}', event)">
-        <i class="ti ${getIconForType(v.type)}"></i>${utils.escapeHTML(v.name)}
-     </div>`
-  ).join('');
+  document.getElementById('selected-vehicle-name').innerText = cv().name;
+  list.innerHTML = Object.entries(appData.vehicles).map(([id, v]) => `<div class="custom-dropdown-option ${id === appData.currentVehicleId ? 'active' : ''}" onclick="selectVehicle('${id}', event)"><i class="ti ${getIconForType(v.type)}"></i>${utils.escapeHTML(v.name)}</div>`).join('');
   updateVehicleIcon();
 }
 
-function selectVehicle(id, event) {
-  if(event) event.stopPropagation();
-  if(!appData.vehicles[id]) return; // Safegaurd
-  appData.currentVehicleId = id;
-  document.getElementById('vehicle-options-list').classList.remove('show');
-  saveLocal(); updateVehicleIcon(); refreshUI(); populateVehicleSelect();
-}
+function selectVehicle(id, event) { if(event) event.stopPropagation(); if(!appData.vehicles[id]) return; appData.currentVehicleId = id; document.getElementById('vehicle-options-list').classList.remove('show'); saveLocal(); updateVehicleIcon(); refreshUI(); populateVehicleSelect(); }
+function updateVehicleIcon() { document.getElementById('main-vehicle-icon').className = `ti ${getIconForType(cv().type)}`; }
 
-function updateVehicleIcon() {
-  document.getElementById('main-vehicle-icon').className = `ti ${getIconForType(cv().type)}`;
-}
-
-function openManageVehiclesModal() {
-  hideVehicleForm();
-  renderVehicleList();
-  openModal('manageVehiclesModal');
-}
+function openManageVehiclesModal() { hideVehicleForm(); renderVehicleList(); openModal('manageVehiclesModal'); }
 
 function renderVehicleList() {
-  const list = document.getElementById('manage-vehicle-list');
-  list.innerHTML = Object.entries(appData.vehicles).map(([id, v]) => `
-    <div class="v-list-item ${id === appData.currentVehicleId ? 'active-v' : ''}">
-       <div class="v-list-info">
-           <i class="ti ${getIconForType(v.type)}"></i> ${utils.escapeHTML(v.name)}
-           ${id === appData.currentVehicleId ? '<span class="badge badge-good" style="padding: 2px 6px; font-size: 10px;">Active</span>' : ''}
-       </div>
-       <div class="v-list-actions">
-           <button class="v-action-btn" onclick="editVehicleForm('${id}')"><i class="ti ti-pencil"></i></button>
-           <button class="v-action-btn delete" onclick="deleteVehicle('${id}')"><i class="ti ti-trash"></i></button>
-       </div>
-    </div>
-  `).join('');
+  document.getElementById('manage-vehicle-list').innerHTML = Object.entries(appData.vehicles).map(([id, v]) => `<div class="v-list-item ${id === appData.currentVehicleId ? 'active-v' : ''}"><div class="v-list-info"><i class="ti ${getIconForType(v.type)}"></i> ${utils.escapeHTML(v.name)} ${id === appData.currentVehicleId ? '<span class="badge badge-good" style="padding: 2px 6px; font-size: 10px;">Active</span>' : ''}</div><div class="v-list-actions"><button class="v-action-btn" onclick="editVehicleForm('${id}')"><i class="ti ti-pencil"></i></button><button class="v-action-btn delete" onclick="deleteVehicle('${id}')"><i class="ti ti-trash"></i></button></div></div>`).join('');
 }
 
-function showAddVehicleForm() {
-  document.getElementById('v-form-title').innerText = 'Add New Vehicle';
-  document.getElementById('v-edit-id').value = '';
-  document.getElementById('v-name').value = '';
-  document.getElementById('v-type').value = 'bike';
-  document.getElementById('v-list-container').style.display = 'none';
-  document.getElementById('v-form-container').classList.add('active');
-  setTimeout(() => document.getElementById('v-name').focus(), 50);
-}
-
-function editVehicleForm(id) {
-  const v = appData.vehicles[id];
-  if(!v) return;
-  document.getElementById('v-form-title').innerText = 'Edit Vehicle';
-  document.getElementById('v-edit-id').value = id;
-  document.getElementById('v-name').value = v.name;
-  document.getElementById('v-type').value = v.type;
-  document.getElementById('v-list-container').style.display = 'none';
-  document.getElementById('v-form-container').classList.add('active');
-  setTimeout(() => document.getElementById('v-name').focus(), 50);
-}
-
-function hideVehicleForm() {
-  document.getElementById('v-form-container').classList.remove('active');
-  document.getElementById('v-list-container').style.display = 'block';
-}
+function showAddVehicleForm() { document.getElementById('v-form-title').innerText = 'Add New Vehicle'; document.getElementById('v-edit-id').value = ''; document.getElementById('v-name').value = ''; document.getElementById('v-type').value = 'bike'; document.getElementById('v-list-container').style.display = 'none'; document.getElementById('v-form-container').classList.add('active'); setTimeout(() => document.getElementById('v-name').focus(), 50); }
+function editVehicleForm(id) { const v = appData.vehicles[id]; if(!v) return; document.getElementById('v-form-title').innerText = 'Edit Vehicle'; document.getElementById('v-edit-id').value = id; document.getElementById('v-name').value = v.name; document.getElementById('v-type').value = v.type; document.getElementById('v-list-container').style.display = 'none'; document.getElementById('v-form-container').classList.add('active'); setTimeout(() => document.getElementById('v-name').focus(), 50); }
+function hideVehicleForm() { document.getElementById('v-form-container').classList.remove('active'); document.getElementById('v-list-container').style.display = 'block'; }
 
 function deleteVehicle(id) {
   const targetName = appData.vehicles[id] ? appData.vehicles[id].name : 'this vehicle';
   customConfirm(`Are you sure you want to permanently delete "${utils.escapeHTML(targetName)}" and ALL its logged data?`, () => {
     delete appData.vehicles[id];
-    
-    if (Object.keys(appData.vehicles).length === 0) {
-      appData.vehicles['v1'] = { name: 'Vehicle 1', type: 'bike', fuelEntries: [], spendEntries: [], oilEntries: [], lastRate: null };
-      appData.currentVehicleId = 'v1';
-      showToast('Last vehicle deleted. Default Vehicle restored.', 'success');
-    } else if (appData.currentVehicleId === id) {
-       appData.currentVehicleId = Object.keys(appData.vehicles)[0];
-       showToast('Active vehicle deleted. Switched to next available.', 'success');
-    } else {
-       showToast('Vehicle deleted successfully.', 'success');
-    }
-    
+    if (Object.keys(appData.vehicles).length === 0) { appData.vehicles['v1'] = { name: 'Vehicle 1', type: 'bike', fuelEntries: [], spendEntries: [], oilEntries: [], lastRate: null }; appData.currentVehicleId = 'v1'; }
+    else if (appData.currentVehicleId === id) appData.currentVehicleId = Object.keys(appData.vehicles)[0];
     saveLocal(); populateVehicleSelect(); refreshUI(); renderVehicleList();
   });
 }
 
 function saveVehicle() {
-  const name = document.getElementById('v-name').value.trim();
-  const type = document.getElementById('v-type').value;
-  const editId = document.getElementById('v-edit-id').value;
-  
+  const name = document.getElementById('v-name').value.trim(); const type = document.getElementById('v-type').value; const editId = document.getElementById('v-edit-id').value;
   if(!name) return showToast("Vehicle name is required.");
-  
-  if (editId && appData.vehicles[editId]) {
-     appData.vehicles[editId].name = name; 
-     appData.vehicles[editId].type = type;
-  } else {
-     const newId = 'v' + Date.now();
-     appData.vehicles[newId] = { name, type, fuelEntries: [], spendEntries: [], oilEntries: [], lastRate: null };
-     appData.currentVehicleId = newId;
-  }
-  
+  if (editId && appData.vehicles[editId]) { appData.vehicles[editId].name = name; appData.vehicles[editId].type = type; }
+  else { const newId = 'v' + Date.now(); appData.vehicles[newId] = { name, type, fuelEntries: [], spendEntries: [], oilEntries: [], lastRate: null }; appData.currentVehicleId = newId; }
   saveLocal(); populateVehicleSelect(); refreshUI(); hideVehicleForm(); renderVehicleList();
 }
 
-// --- DATA ENTRY & LOGIC ---
-
-// Debounce for input fields to prevent excessive rendering
 let calcTimeout;
-function debounceCalcQty() {
-  clearTimeout(calcTimeout);
-  calcTimeout = setTimeout(calcQty, 300);
-}
-
+function debounceCalcQty() { clearTimeout(calcTimeout); calcTimeout = setTimeout(calcQty, 300); }
 function calcQty() {
-  const amt = parseFloat(document.getElementById('f-amount').value);
-  const rate = parseFloat(document.getElementById('f-rate').value);
-  const display = document.getElementById('qty-display');
-  if (amt > 0 && rate > 0 && !isNaN(amt) && !isNaN(rate)) {
-      display.innerHTML = `Calculated Quantity: <span>${(amt/rate).toFixed(2)} L</span>`;
-  } else {
-      display.innerHTML = '';
-  }
+  const amt = parseFloat(document.getElementById('f-amount').value); const rate = parseFloat(document.getElementById('f-rate').value); const display = document.getElementById('qty-display');
+  if (amt > 0 && rate > 0 && !isNaN(amt) && !isNaN(rate)) display.innerHTML = `Calculated Quantity: <span>${(amt/rate).toFixed(2)} L</span>`;
+  else display.innerHTML = '';
 }
 
 function saveFuel() {
-  // FIX 2: Added .trim() and loosened length requirement
-  const date = document.getElementById('f-date').value.trim();
-  const amount = parseFloat(document.getElementById('f-amount').value);
-  const rate = parseFloat(document.getElementById('f-rate').value);
-  if (!date || date.length < 8 || isNaN(amount) || isNaN(rate) || rate <= 0) {
-      return showToast('Please input valid Date (DD/MM/YYYY), Amount, and Rate');
-  }
-  cv().lastRate = rate;
-  fData().push({ id: Date.now(), date, type: 'fuel', amount, rate, qty: amount/rate });
+  const date = document.getElementById('f-date').value.trim(); const amount = parseFloat(document.getElementById('f-amount').value); const rate = parseFloat(document.getElementById('f-rate').value);
+  if (!date || date.length < 8 || isNaN(amount) || isNaN(rate) || rate <= 0) return showToast('Please input valid Date (DD/MM/YYYY), Amount, and Rate');
+  cv().lastRate = rate; fData().push({ id: Date.now(), date, type: 'fuel', amount, rate, qty: amount/rate });
   closeModal('fuelModal'); recalcMileage(); refreshUI(); saveLocal(); showToast('Fuel log saved!', 'success');
 }
 
 function saveReserve() {
-  // FIX 2: Added .trim() and loosened length requirement
-  const date = document.getElementById('r-date').value.trim();
-  const odo = parseFloat(document.getElementById('r-odo').value);
+  const date = document.getElementById('r-date').value.trim(); const odo = parseFloat(document.getElementById('r-odo').value);
   if (!date || date.length < 8 || isNaN(odo) || odo < 0) return showToast('Please input valid Date (DD/MM/YYYY) and Odometer');
   fData().push({ id: Date.now(), date, odo, type: 'reserve' });
   closeModal('reserveModal'); recalcMileage(); refreshUI(); saveLocal(); showToast('Reserve point logged!', 'success');
 }
 
-function deleteFuelEntry(id) { 
-  customConfirm("Delete this fuel log entry permanently?", () => {
-    cv().fuelEntries = fData().filter(e => e.id !== id); recalcMileage(); refreshUI(); saveLocal();
-  });
-}
+function deleteFuelEntry(id) { customConfirm("Delete this fuel log entry permanently?", () => { cv().fuelEntries = fData().filter(e => e.id !== id); recalcMileage(); refreshUI(); saveLocal(); }); }
 
 function recalcMileage() {
   let arr = fData();
@@ -1014,66 +786,40 @@ function recalcMileage() {
   let lastReserveOdo = null, accumulatedQty = 0;
   for (let i = 0; i < arr.length; i++) {
     const e = arr[i]; e.dist = null; e.mileage = null; e.accumulatedQty = null;
-    if (e.type === 'fuel') {
-      if (lastReserveOdo !== null) accumulatedQty += e.qty;
-    } else if (e.type === 'reserve') {
-      if (lastReserveOdo !== null && accumulatedQty > 0) { e.dist = e.odo - lastReserveOdo; e.accumulatedQty = accumulatedQty; e.mileage = e.dist / e.accumulatedQty; }
-      lastReserveOdo = e.odo; accumulatedQty = 0;
-    }
+    if (e.type === 'fuel') { if (lastReserveOdo !== null) accumulatedQty += (e.qty || 0); }
+    else if (e.type === 'reserve') { if (lastReserveOdo !== null && accumulatedQty > 0) { e.dist = e.odo - lastReserveOdo; e.accumulatedQty = accumulatedQty; e.mileage = e.dist / e.accumulatedQty; } lastReserveOdo = e.odo; accumulatedQty = 0; }
   }
 }
 
 function saveSpend() {
-  const date = document.getElementById('s-date').value.trim();
-  const cat = document.getElementById('s-cat').value;
-  const desc = document.getElementById('s-desc').value.trim();
-  const amount = parseFloat(document.getElementById('s-amount').value);
+  const date = document.getElementById('s-date').value.trim(); const cat = document.getElementById('s-cat').value; const desc = document.getElementById('s-desc').value.trim(); const amount = parseFloat(document.getElementById('s-amount').value);
   if (!date || date.length < 8 || !desc || isNaN(amount) || amount < 0) return showToast('Please fill all fields correctly');
   sData().push({ date, cat, desc, amount, id: Date.now() });
   closeModal('spendModal'); refreshUI(); saveLocal(); showToast('Maintenance record saved!', 'success');
 }
 
-function deleteSpend(id) { 
-  customConfirm("Delete this maintenance record?", () => {
-    cv().spendEntries = sData().filter(e => e.id !== id); refreshUI(); saveLocal();
-  });
-}
+function deleteSpend(id) { customConfirm("Delete this maintenance record?", () => { cv().spendEntries = sData().filter(e => e.id !== id); refreshUI(); saveLocal(); }); }
 
 function saveOil() {
-  const date = document.getElementById('oil-date').value.trim();
-  const odo = parseFloat(document.getElementById('oil-odo').value);
-  let amount = parseFloat(document.getElementById('oil-amount').value);
+  const date = document.getElementById('oil-date').value.trim(); const odo = parseFloat(document.getElementById('oil-odo').value); let amount = parseFloat(document.getElementById('oil-amount').value);
   if (isNaN(amount)) amount = null;
   if (!date || date.length < 8 || isNaN(odo) || odo < 0) return showToast('Valid Date (DD/MM/YYYY) and positive Odometer required.');
-  
   oData().push({ id: Date.now(), date, odo, amount });
   closeModal('oilModal'); refreshUI(); saveLocal(); showToast('Oil change logged!', 'success');
 }
 
-function deleteOilEntry(id) { 
-  customConfirm("Delete this oil change record?", () => {
-    cv().oilEntries = oData().filter(e => e.id !== id); refreshUI(); saveLocal();
-  });
-}
+function deleteOilEntry(id) { customConfirm("Delete this oil change record?", () => { cv().oilEntries = oData().filter(e => e.id !== id); refreshUI(); saveLocal(); }); }
 
 function checkOilAlert() {
-  const oilArr = oData();
-  const banner = document.getElementById('oil-alert-banner');
+  const oilArr = oData(); const banner = document.getElementById('oil-alert-banner');
   if (!oilArr.length) { banner.style.display = 'none'; return; }
-  
-  const lastOilOdo = Math.max(...oilArr.map(e => e.odo));
+  const lastOilOdo = Math.max(...oilArr.map(e => e.odo || 0));
   let currentOdo = lastOilOdo;
   fData().forEach(e => { if(e.odo > currentOdo) currentOdo = e.odo; });
-  
-  if (currentOdo - lastOilOdo >= 3000) {
-      banner.style.display = 'flex';
-      document.getElementById('oil-alert-text').innerText = `Oil Change Overdue! It has been ${Math.round(currentOdo - lastOilOdo).toLocaleString('en-IN')} km since your last recorded replacement.`;
-  } else {
-      banner.style.display = 'none';
-  }
+  if (currentOdo - lastOilOdo >= 3000) { banner.style.display = 'flex'; document.getElementById('oil-alert-text').innerText = `Oil Change Overdue! It has been ${Math.round(currentOdo - lastOilOdo).toLocaleString('en-IN')} km since your last recorded replacement.`; }
+  else { banner.style.display = 'none'; }
 }
 
-// --- RENDERING ---
 function refreshUI() {
   renderFuel(); renderSpend(); renderOil(); checkOilAlert();
   if(document.getElementById('panel-overview').classList.contains('active')) renderOverview();
@@ -1082,11 +828,7 @@ function refreshUI() {
 function triggerCloudSyncAnimation() {
   const indicator = document.getElementById('sync-indicator');
   indicator.classList.remove('sync-success'); indicator.classList.add('sync-updating');
-  const syncDelay = 800 + Math.random() * 700;
-  setTimeout(() => {
-    indicator.classList.remove('sync-updating'); indicator.classList.add('sync-success');
-    setTimeout(() => { indicator.classList.remove('sync-success'); }, 2500);
-  }, syncDelay);
+  setTimeout(() => { indicator.classList.remove('sync-updating'); indicator.classList.add('sync-success'); setTimeout(() => { indicator.classList.remove('sync-success'); }, 2500); }, 800 + Math.random() * 700);
 }
 
 function renderFuel() {
@@ -1095,7 +837,7 @@ function renderFuel() {
   const isPending = openRes && arr[arr.length-1].id !== openRes.id;
   
   const banner = document.getElementById('reserve-pending');
-  if (isPending) { banner.style.display = 'flex'; document.getElementById('reserve-pending-km').innerText = openRes.odo.toLocaleString('en-IN'); }
+  if (isPending) { banner.style.display = 'flex'; document.getElementById('reserve-pending-km').innerText = (openRes.odo || 0).toLocaleString('en-IN'); }
   else { banner.style.display = 'none'; }
 
   const fuels = arr.filter(e => e.type === 'fuel');
@@ -1103,8 +845,8 @@ function renderFuel() {
   
   document.getElementById('m-avg').innerText = reserves.length ? (reserves.reduce((s,e)=>s+e.mileage,0)/reserves.length).toFixed(1) : '—';
   document.getElementById('m-best').innerText = reserves.length ? Math.max(...reserves.map(e=>e.mileage)).toFixed(1) : '—';
-  document.getElementById('m-fuel').innerText = fuels.length ? fuels.reduce((s,e)=>s+e.qty,0).toFixed(1) : '—';
-  document.getElementById('m-spent').innerText = fuels.length ? Math.round(fuels.reduce((s,e)=>s+e.amount,0)).toLocaleString('en-IN') : '—';
+  document.getElementById('m-fuel').innerText = fuels.length ? fuels.reduce((s,e)=>s+(e.qty||0),0).toFixed(1) : '—';
+  document.getElementById('m-spent').innerText = fuels.length ? Math.round(fuels.reduce((s,e)=>s+(e.amount||0),0)).toLocaleString('en-IN') : '—';
 
   const tbody = document.getElementById('fuel-log-body');
   const empty = document.getElementById('fuel-empty');
@@ -1115,39 +857,39 @@ function renderFuel() {
     empty.style.display = 'none';
     tbody.innerHTML = displayArr.map((e, i) => {
       const anim = `style="animation-delay: ${i * 0.03}s"`;
-      if (e.type === 'reserve') return `<tr class="reserve-row row-animate" ${anim}><td>${e.date}</td><td><span class="badge badge-reserve"><i class="ti ti-alert-triangle"></i> Reserve</span></td><td>${e.odo.toLocaleString('en-IN')}</td><td>${e.dist?e.dist:'—'}</td><td>${e.accumulatedQty?e.accumulatedQty.toFixed(2):'—'}</td><td>—</td><td>—</td><td>${e.mileage?`<span class="badge badge-good">${e.mileage.toFixed(1)}</span>`:'—'}</td><td><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`;
-      return `<tr class="row-animate" ${anim}><td>${e.date}</td><td><span class="badge badge-fuel"><i class="ti ti-droplet"></i> Fuel</span></td><td>—</td><td>—</td><td>${e.qty.toFixed(2)}</td><td>₹${e.rate.toFixed(2)}</td><td>₹${e.amount.toLocaleString('en-IN')}</td><td>—</td><td><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`;
+      if (e.type === 'reserve') return `<tr class="reserve-row row-animate" ${anim}><td>${e.date}</td><td><span class="badge badge-reserve"><i class="ti ti-alert-triangle"></i> Reserve</span></td><td>${(e.odo||0).toLocaleString('en-IN')}</td><td>${e.dist?e.dist:'—'}</td><td>${e.accumulatedQty?e.accumulatedQty.toFixed(2):'—'}</td><td>—</td><td>—</td><td>${e.mileage?`<span class="badge badge-good">${e.mileage.toFixed(1)}</span>`:'—'}</td><td><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`;
+      return `<tr class="row-animate" ${anim}><td>${e.date}</td><td><span class="badge badge-fuel"><i class="ti ti-droplet"></i> Fuel</span></td><td>—</td><td>—</td><td>${(e.qty||0).toFixed(2)}</td><td>₹${(e.rate||0).toFixed(2)}</td><td>₹${(e.amount||0).toLocaleString('en-IN')}</td><td>—</td><td><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`;
     }).join('');
   }
 
   if(charts.mil) charts.mil.destroy();
-  charts.mil = new Chart(document.getElementById('chart-mileage'), { type: 'line', data: { labels: reserves.map((_,i)=>`Cycle ${i+1}`), datasets: [{ data: reserves.map(e=>e.mileage), borderColor: '#0ea5e9', backgroundColor: 'rgba(14, 165, 233, 0.1)', fill: true, tension: 0.4, pointBackgroundColor: '#0ea5e9', pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { color: 'rgba(255,255,255,0.05)' } } } } });
+  charts.mil = new Chart(document.getElementById('chart-mileage'), { type: 'line', data: { labels: reserves.map((_,i)=>`Cycle ${i+1}`), datasets: [{ data: reserves.map(e=>e.mileage||0), borderColor: '#0ea5e9', backgroundColor: 'rgba(14, 165, 233, 0.1)', fill: true, tension: 0.4, pointBackgroundColor: '#0ea5e9', pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { color: 'rgba(255,255,255,0.05)' } } } } });
   
   if(charts.fsp) charts.fsp.destroy();
-  charts.fsp = new Chart(document.getElementById('chart-spend'), { type: 'bar', data: { labels: fuels.map((_,i)=>`Fill #${i+1}`), datasets: [{ data: fuels.map(e=>e.amount), backgroundColor: '#0ea5e9', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } } });
+  charts.fsp = new Chart(document.getElementById('chart-spend'), { type: 'bar', data: { labels: fuels.map((_,i)=>`Fill #${i+1}`), datasets: [{ data: fuels.map(e=>e.amount||0), backgroundColor: '#0ea5e9', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } } });
 }
 
 function renderSpend() {
   const arr = sData();
-  document.getElementById('s-total').innerText = arr.length ? Math.round(arr.reduce((s,e)=>s+e.amount,0)).toLocaleString('en-IN') : '—';
+  document.getElementById('s-total').innerText = arr.length ? Math.round(arr.reduce((s,e)=>s+(e.amount||0),0)).toLocaleString('en-IN') : '—';
   document.getElementById('s-count').innerText = arr.length || '—';
 
   const tbody = document.getElementById('spend-log-body');
   if (!arr.length) { tbody.innerHTML = ''; document.getElementById('spend-empty').style.display = 'block'; }
   else {
     document.getElementById('spend-empty').style.display = 'none';
-    tbody.innerHTML = [...arr].sort((a,b)=>utils.parseDate(b.date)-utils.parseDate(a.date)).map((e, i) => `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${e.date}</td><td><span class="badge" style="background:rgba(139, 92, 246, 0.15);color:#c4b5fd;border:1px solid rgba(139, 92, 246, 0.3)">${utils.escapeHTML(e.cat)}</span></td><td>${utils.escapeHTML(e.desc)}</td><td>₹${e.amount.toLocaleString('en-IN')}</td><td><button class="del-btn" onclick="deleteSpend(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`).join('');
+    tbody.innerHTML = [...arr].sort((a,b)=>utils.parseDate(b.date)-utils.parseDate(a.date)).map((e, i) => `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${e.date}</td><td><span class="badge" style="background:rgba(139, 92, 246, 0.15);color:#c4b5fd;border:1px solid rgba(139, 92, 246, 0.3)">${utils.escapeHTML(e.cat)}</span></td><td>${utils.escapeHTML(e.desc)}</td><td>₹${(e.amount||0).toLocaleString('en-IN')}</td><td><button class="del-btn" onclick="deleteSpend(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`).join('');
   }
 
   const catColors = { 'Service':'#3b82f6','Spare part':'#8b5cf6','Repair':'#f59e0b','Tyre':'#10b981','Insurance':'#ec4899','Other':'#64748b' };
-  let catTotals = {}; arr.forEach(e => catTotals[e.cat] = (catTotals[e.cat]||0) + e.amount);
+  let catTotals = {}; arr.forEach(e => catTotals[e.cat] = (catTotals[e.cat]||0) + (e.amount||0));
   
   if(charts.cat) charts.cat.destroy();
   charts.cat = new Chart(document.getElementById('chart-cat'), { type: 'doughnut', data: { labels: Object.keys(catTotals), datasets: [{ data: Object.values(catTotals), backgroundColor: Object.keys(catTotals).map(c=>catColors[c]||'#64748b'), borderWidth:0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins:{legend:{position:'right',labels:{color:'#f8fafc', font:{family:"Inter", size:13}}}} } });
   
   if(charts.stl) charts.stl.destroy();
   const sorted = [...arr].sort((a,b)=>utils.parseDate(a.date)-utils.parseDate(b.date));
-  charts.stl = new Chart(document.getElementById('chart-timeline'), { type: 'bar', data: { labels: sorted.map((_,i)=>`#${i+1}`), datasets: [{ data: sorted.map(e=>e.amount), backgroundColor: sorted.map(e=>catColors[e.cat]||'#64748b'), borderRadius:6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } } });
+  charts.stl = new Chart(document.getElementById('chart-timeline'), { type: 'bar', data: { labels: sorted.map((_,i)=>`#${i+1}`), datasets: [{ data: sorted.map(e=>e.amount||0), backgroundColor: sorted.map(e=>catColors[e.cat]||'#64748b'), borderRadius:6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } } });
 }
 
 function renderOil() {
@@ -1155,9 +897,9 @@ function renderOil() {
   const sorted = [...arr].sort((a,b)=>utils.parseDate(b.date)-utils.parseDate(a.date));
   
   if (sorted.length > 0) {
-     const lastOil = sorted[0].odo;
+     const lastOil = sorted[0].odo || 0;
      let currentOdo = lastOil;
-     fData().forEach(e => { if(e.odo > currentOdo) currentOdo = e.odo; });
+     fData().forEach(e => { if((e.odo||0) > currentOdo) currentOdo = (e.odo||0); });
      
      document.getElementById('oil-last-odo').innerText = lastOil.toLocaleString('en-IN');
      document.getElementById('oil-dist').innerText = Math.round(currentOdo - lastOil).toLocaleString('en-IN');
@@ -1170,13 +912,13 @@ function renderOil() {
   if (!sorted.length) { tbody.innerHTML = ''; document.getElementById('oil-empty').style.display = 'block'; }
   else {
     document.getElementById('oil-empty').style.display = 'none';
-    tbody.innerHTML = sorted.map((e, i) => `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${e.date}</td><td>${e.odo.toLocaleString('en-IN')}</td><td>${e.amount ? '₹'+e.amount.toLocaleString('en-IN') : '—'}</td><td><button class="del-btn" onclick="deleteOilEntry(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`).join('');
+    tbody.innerHTML = sorted.map((e, i) => `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${e.date}</td><td>${(e.odo||0).toLocaleString('en-IN')}</td><td>${e.amount ? '₹'+e.amount.toLocaleString('en-IN') : '—'}</td><td><button class="del-btn" onclick="deleteOilEntry(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`).join('');
   }
 }
 
 function renderOverview() {
-  const fTotal = fData().filter(e=>e.type==='fuel').reduce((s,e)=>s+e.amount,0);
-  const mTotal = sData().reduce((s,e)=>s+e.amount,0);
+  const fTotal = fData().filter(e=>e.type==='fuel').reduce((s,e)=>s+(e.amount||0),0);
+  const mTotal = sData().reduce((s,e)=>s+(e.amount||0),0);
   const oTotal = oData().reduce((s,e)=>s+(e.amount||0),0);
   const combinedMaint = mTotal + oTotal;
   
@@ -1188,8 +930,8 @@ function renderOverview() {
   charts.opie = new Chart(document.getElementById('chart-overview-pie'), { type: 'doughnut', data: { labels: ['Fuel','Maintenance & Oil'], datasets: [{ data: [fTotal, combinedMaint], backgroundColor: ['#0ea5e9','#8b5cf6'], borderWidth:0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins:{legend:{position:'bottom',labels:{color:'#f8fafc', padding: 20}}} } });
 
   let byMo = {};
-  fData().filter(e=>e.type==='fuel').forEach(e => { let m=utils.getMonthStr(e.date); byMo[m]=byMo[m]||{f:0,m:0}; byMo[m].f+=e.amount; });
-  sData().forEach(e => { let m=utils.getMonthStr(e.date); byMo[m]=byMo[m]||{f:0,m:0}; byMo[m].m+=e.amount; });
+  fData().filter(e=>e.type==='fuel').forEach(e => { let m=utils.getMonthStr(e.date); byMo[m]=byMo[m]||{f:0,m:0}; byMo[m].f+=(e.amount||0); });
+  sData().forEach(e => { let m=utils.getMonthStr(e.date); byMo[m]=byMo[m]||{f:0,m:0}; byMo[m].m+=(e.amount||0); });
   oData().forEach(e => { if(e.amount) { let m=utils.getMonthStr(e.date); byMo[m]=byMo[m]||{f:0,m:0}; byMo[m].m+=e.amount; }});
   let mos = Object.keys(byMo).sort();
 
@@ -1203,13 +945,11 @@ function renderOverview() {
   charts.omo = new Chart(document.getElementById('chart-monthly'), { type: 'bar', data: { labels: mLabels, datasets: [{ label: 'Fuel', data: mos.map(m=>byMo[m].f), backgroundColor: '#0ea5e9', borderRadius: 4 }, { label: 'Maintenance & Oil', data: mos.map(m=>byMo[m].m), backgroundColor: '#8b5cf6', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x:{stacked:true, grid:{display:false}}, y:{stacked:true, grid:{color:'rgba(255,255,255,0.05)'}} } } });
 }
 
-// --- SECUIRTY & 2FA ---
 function openPasswordModal() {
   document.getElementById('passwordModal').classList.add('active');
   document.getElementById('new-pwd').value = ''; document.getElementById('totp-code').value = '';
   const qrContainer = document.getElementById('qr-container');
   qrContainer.innerHTML = ''; 
-  
   if (!appData.totpSecret) {
     document.getElementById('2fa-setup-text').style.display = 'block';
     const secret = new OTPAuth.Secret({ size: 20 });
@@ -1223,29 +963,19 @@ function openPasswordModal() {
 }
 
 function verifyAndChangePassword() {
-  const code = document.getElementById('totp-code').value;
-  const newPwd = document.getElementById('new-pwd').value;
+  const code = document.getElementById('totp-code').value; const newPwd = document.getElementById('new-pwd').value;
   if (!code || code.length !== 6 || !newPwd) return showToast("Please provide both a new password and a 6-digit authenticator code.");
-  
   let delta = currentTotpSetup.validate({ token: code, window: 1 });
-  if (delta !== null) {
-    appData.password = btoa(newPwd);
-    if (!appData.totpSecret) appData.totpSecret = currentTotpSetup.secret.base32;
-    saveLocal(); closeModal('passwordModal'); showToast("Security settings updated successfully!", "success");
-  } else {
-    showToast("Invalid Authenticator Code. Try again.");
-  }
+  if (delta !== null) { appData.password = btoa(newPwd); if (!appData.totpSecret) appData.totpSecret = currentTotpSetup.secret.base32; saveLocal(); closeModal('passwordModal'); showToast("Security settings updated successfully!", "success"); }
+  else showToast("Invalid Authenticator Code. Try again.");
 }
 
-// --- EXCEL LOGIC ---
 function exportData() {
   if(typeof XLSX === 'undefined') return showToast("Excel library loading, please wait...");
   const wb = XLSX.utils.book_new();
-  
   const defaultF = [{ Date: "", Type: "", Odometer: "", Amount: "", Rate: "", Qty: "" }];
   const defaultS = [{ Date: "", Category: "", Description: "", Amount: "" }];
   const defaultO = [{ Date: "", Odometer: "", Amount: "" }];
-  
   const fExport = fData().length ? fData().map(e => ({ Date: e.date, Type: e.type, Odometer: e.odo||'', Amount: e.amount||'', Rate: e.rate||'', Qty: e.qty||'' })) : defaultF;
   const sExport = sData().length ? sData().map(e => ({ Date: e.date, Category: e.cat, Description: e.desc, Amount: e.amount })) : defaultS;
   const oExport = oData().length ? oData().map(e => ({ Date: e.date, Odometer: e.odo, Amount: e.amount||'' })) : defaultO;
@@ -1253,7 +983,6 @@ function exportData() {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(fExport), "Fuel_Logs");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sExport), "Maintenance");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(oExport), "Oil_Logs");
-  
   XLSX.writeFile(wb, `${cv().name.replace(/\s+/g, '_')}_Telemetry.xlsx`);
 }
 
@@ -1267,22 +996,24 @@ function importData(event) {
       const data = new Uint8Array(e.target.result);
       const wb = XLSX.read(data, {type: 'array'});
       
-      // Helper function to strip currency symbols (₹, $) and commas so math doesn't break
+      // CRITICAL FIX: Gracefully converts missing/blank text/currency into a solid 0
       const safeNum = (val) => {
-          if (val === undefined || val === null || val === '') return null;
+          if (val === undefined || val === null || String(val).trim() === '') return 0;
           const parsed = parseFloat(String(val).replace(/[^\d.-]/g, ''));
-          return isNaN(parsed) ? null : parsed;
+          return isNaN(parsed) ? 0 : parsed;
       };
 
-      if(wb.SheetNames.includes("Fuel_Logs")) {
-        XLSX.utils.sheet_to_json(wb.Sheets["Fuel_Logs"], {raw: false}).forEach((r, i) => {
+      // Bulletproof Sheet Name Matching
+      const sheetNames = wb.SheetNames.map(s => s.trim().toLowerCase());
+      
+      const fuelIdx = sheetNames.indexOf("fuel_logs");
+      if(fuelIdx > -1) {
+        XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[fuelIdx]], {raw: false, defval: ""}).forEach((r, i) => {
           if(r.Date && r.Type) {
-             // FIX: Strip invisible spaces and force strict lowercase
-             const cleanType = String(r.Type).trim().toLowerCase();
              cv().fuelEntries.push({ 
-                 id: Date.now() + i, 
+                 id: Date.now() + Math.random(), 
                  date: String(r.Date).trim(), 
-                 type: cleanType, 
+                 type: String(r.Type).trim().toLowerCase(), 
                  odo: safeNum(r.Odometer), 
                  amount: safeNum(r.Amount), 
                  rate: safeNum(r.Rate), 
@@ -1292,11 +1023,12 @@ function importData(event) {
         });
       }
       
-      if(wb.SheetNames.includes("Maintenance")) {
-        XLSX.utils.sheet_to_json(wb.Sheets["Maintenance"], {raw: false}).forEach((r, i) => {
-          if(r.Date && r.Category && r.Amount) {
+      const maintIdx = sheetNames.indexOf("maintenance");
+      if(maintIdx > -1) {
+        XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[maintIdx]], {raw: false, defval: ""}).forEach((r, i) => {
+          if(r.Date && r.Category) {
              cv().spendEntries.push({ 
-                 id: Date.now() + 10000 + i, 
+                 id: Date.now() + Math.random(), 
                  date: String(r.Date).trim(), 
                  cat: String(r.Category).trim(), 
                  desc: r.Description ? String(r.Description).trim() : '', 
@@ -1306,11 +1038,12 @@ function importData(event) {
         });
       }
       
-      if(wb.SheetNames.includes("Oil_Logs")) {
-        XLSX.utils.sheet_to_json(wb.Sheets["Oil_Logs"], {raw: false}).forEach((r, i) => {
+      const oilIdx = sheetNames.indexOf("oil_logs");
+      if(oilIdx > -1) {
+        XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[oilIdx]], {raw: false, defval: ""}).forEach((r, i) => {
           if(r.Date && r.Odometer) {
              cv().oilEntries.push({ 
-                 id: Date.now() + 20000 + i, 
+                 id: Date.now() + Math.random(), 
                  date: String(r.Date).trim(), 
                  odo: safeNum(r.Odometer), 
                  amount: safeNum(r.Amount) 
@@ -1323,13 +1056,13 @@ function importData(event) {
       showToast("Data imported successfully! Formatting cleaned.", "success");
     } catch(err) {
       console.error(err);
-      showToast("Error parsing file. Please ensure it matches the exported template.");
+      showToast("Error parsing file. Please check console.");
     }
   };
   reader.readAsArrayBuffer(file);
   event.target.value = ''; 
 }
-// Boot
+
 initApp();
 </script>
 </body>
