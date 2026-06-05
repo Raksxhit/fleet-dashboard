@@ -133,6 +133,39 @@
     0% { box-shadow: 0 0 5px rgba(245, 158, 11, 0.4), inset 0 0 5px rgba(245, 158, 11, 0.1); }
     100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.8), inset 0 0 10px rgba(245, 158, 11, 0.3); }
   }
+
+  /* Live Connection Indicator */
+  .live-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 99px;
+    border: 1px solid var(--border-light);
+  }
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--accent-green);
+    box-shadow: 0 0 8px var(--accent-green);
+    animation: pulseGreen 2s infinite;
+    display: inline-block;
+  }
+  .live-dot.offline {
+    background-color: var(--accent-red);
+    box-shadow: 0 0 8px var(--accent-red);
+    animation: none;
+  }
+  @keyframes pulseGreen {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+    70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
   
   /* Custom Vehicle Dropdown */
   .custom-dropdown { position: relative; display: inline-block; min-width: 200px; }
@@ -420,6 +453,10 @@
             <i id="main-vehicle-icon" class="ti ti-motorbike" style="font-size: 24px; z-index: 2;"></i>
         </div>
         
+        <div class="live-status">
+          <span class="live-dot" id="connection-dot"></span> <span id="connection-text">Live</span>
+        </div>
+
         <div class="custom-dropdown" id="vehicle-dropdown-container">
           <div class="custom-dropdown-selected" onclick="toggleVehicleDropdown(event)">
             <span id="selected-vehicle-name">Loading...</span>
@@ -779,35 +816,68 @@ const db = firebase.firestore();
 // We will store all data in a single document for your dashboard
 const USER_DOC_ID = "my_fleet_data"; 
 
-// INITIALIZATION (Cloud Fetch)
-async function initApp() {
-  try {
-    // 1. Try to fetch data from Firebase
-    const docRef = await db.collection("telemetry").doc(USER_DOC_ID).get();
-    
-    if (docRef.exists) {
-      let parsed = docRef.data();
-      appData = { ...appData, ...parsed }; 
-      for (let vId in appData.vehicles) {
-         if (!appData.vehicles[vId].type) appData.vehicles[vId].type = 'bike';
-         if (!appData.vehicles[vId].oilEntries) appData.vehicles[vId].oilEntries = [];
+// ==================================================
+// CLOUD SYNC & INIT LOGIC
+// ==================================================
+
+let isFirstLoad = true;
+let isLocalSaving = false; // Prevents snapshot from overriding local UI instantly during a save
+
+function initApp() {
+  const docRef = db.collection("telemetry").doc(USER_DOC_ID);
+
+  // REAL-TIME LISTENER
+  docRef.onSnapshot((doc) => {
+    if (doc.exists) {
+      // Only process incoming cloud data if we aren't currently pushing a local save
+      if (!isLocalSaving) {
+        let parsed = doc.data();
+        appData = { ...appData, ...parsed }; 
+        for (let vId in appData.vehicles) {
+           if (!appData.vehicles[vId].type) appData.vehicles[vId].type = 'bike';
+           if (!appData.vehicles[vId].oilEntries) appData.vehicles[vId].oilEntries = [];
+        }
+        
+        // Update UI if the user is already logged in
+        if(sessionStorage.getItem('isLoggedIn') === 'true') { 
+            populateVehicleSelect();
+            refreshUI();
+            // Refresh manage vehicles list if that modal happens to be open
+            if(document.getElementById('manageVehiclesModal').classList.contains('active')) {
+                renderVehicleList();
+            }
+        }
       }
-    } else {
-      // 2. If it's a brand new database, save the default initial state
-      saveLocal();
+    } else if (isFirstLoad) {
+      saveLocal(); // Create initial doc if it doesn't exist
     }
-  } catch (error) {
-    console.error("Firebase fetch error:", error);
-    showToast("Cloud fetch failed. Loading offline backup.", "error");
     
-    // 3. Failsafe: Load offline backup if Firebase is blocked or offline
+    isFirstLoad = false;
+    document.getElementById('connection-dot').classList.remove('offline');
+    document.getElementById('connection-text').innerText = 'Live';
+    
+  }, (error) => {
+    console.error("Firebase realtime error:", error);
+    document.getElementById('connection-dot').classList.add('offline');
+    document.getElementById('connection-text').innerText = 'Offline';
+    
+    // Failsafe offline backup
     const saved = localStorage.getItem('bikeDataStore');
-    if(saved) {
-      let parsed = JSON.parse(saved);
-      appData = { ...appData, ...parsed };
+    if(saved && isFirstLoad) {
+      appData = { ...appData, ...JSON.parse(saved) };
     }
-  }
-  
+  });
+
+  // Track Network Status
+  window.addEventListener('offline', () => {
+      document.getElementById('connection-dot').classList.add('offline');
+      document.getElementById('connection-text').innerText = 'Offline';
+  });
+  window.addEventListener('online', () => {
+      document.getElementById('connection-dot').classList.remove('offline');
+      document.getElementById('connection-text').innerText = 'Live';
+  });
+
   if(sessionStorage.getItem('isLoggedIn') === 'true') { 
       unlockApp(); 
   } else {
@@ -815,6 +885,7 @@ async function initApp() {
   }
 
   initDatePickers();
+  initModalClickOutside();
 }
 
 function initDatePickers() {
@@ -827,6 +898,18 @@ function initDatePickers() {
           else if (v.length >= 3) this.value = v.substring(0, 2) + '/' + v.substring(2, 4);
           else this.value = v;
       });
+  });
+}
+
+// CLICK OUTSIDE MODAL TO CLOSE
+function initModalClickOutside() {
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('mousedown', function(e) {
+      // If the actual target clicked is the overlay background (and not the content box inside)
+      if (e.target === this) {
+        closeModal(this.id);
+      }
+    });
   });
 }
 
@@ -909,23 +992,22 @@ function triggerCloudSyncAnimation() {
 
 // SAVE DATA (Cloud Push with Animation)
 function saveLocal() { 
-  // 1. Always keep a local backup in case of offline usage
   localStorage.setItem('bikeDataStore', JSON.stringify(appData)); 
-  
-  // 2. Trigger the neon yellow syncing animation
   triggerCloudSyncAnimation();
   
-  // 3. Push to Firebase Firestore
+  isLocalSaving = true; // Lock the snapshot listener temporarily
+  
   db.collection("telemetry").doc(USER_DOC_ID).set(appData)
     .then(() => {
        console.log("Successfully synced to cloud.");
-       // Note: The green success animation is handled via setTimeout in triggerCloudSyncAnimation
+       // Unlock listener after a short delay to allow Firebase local cache to settle
+       setTimeout(() => { isLocalSaving = false; }, 500); 
     })
     .catch((error) => {
        console.error("Cloud Sync Failed: ", error);
        showToast("Cloud Sync Failed!", "error");
+       isLocalSaving = false;
        
-       // Force stop the animation if it errors out
        const indicator = document.getElementById('sync-indicator');
        indicator.classList.remove('sync-updating', 'sync-success');
     });
