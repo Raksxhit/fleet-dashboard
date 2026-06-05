@@ -121,7 +121,10 @@
   @keyframes slideInRight { from { opacity: 0; transform: translateX(-15px); } to { opacity: 1; transform: translateX(0); } }
   @keyframes pulseSubtle { 0%, 100% { opacity: 0.3; transform: scale(0.98); } 50% { opacity: 0.7; transform: scale(1); } }
   @keyframes fadeOutRight { to { opacity: 0; transform: translateX(20px); } }
+  @keyframes blinkNeonGreen { 0% { text-shadow: 0 0 10px rgba(16, 185, 129, 0.6), 0 0 20px rgba(16, 185, 129, 0.4); opacity: 1; } 100% { text-shadow: 0 0 5px rgba(16, 185, 129, 0.3), 0 0 10px rgba(16, 185, 129, 0.1); opacity: 0.8; } }
   
+  .neon-green { color: #10b981; animation: blinkNeonGreen 1.2s infinite alternate; }
+
   .animate-in { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
   .delay-1 { animation-delay: 0.05s; } .delay-2 { animation-delay: 0.1s; } .delay-3 { animation-delay: 0.15s; }
   .row-animate { animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
@@ -190,11 +193,8 @@
   .edit-btn:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(14, 165, 233, 0.2); transform: scale(1.05); }
   .del-btn:hover { color: var(--accent-red); background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); transform: scale(1.05); }
 
-  .alert-banner, .reserve-info { border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px; font-weight: 500; font-size: 14px; }
-  .alert-banner { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; display: none; }
+  .alert-banner { border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px; font-weight: 500; font-size: 14px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; display: none; }
   .alert-banner i { color: var(--accent-red); }
-  .reserve-info { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #fcd34d; }
-  .reserve-info i { color: var(--accent-amber); }
 
   #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
   .toast { background: var(--bg-surface); border-left: 4px solid var(--accent-red); color: white; padding: 16px 24px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 12px; font-weight: 500; animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; pointer-events: auto; }
@@ -330,15 +330,16 @@
         <button class="btn btn-fuel" onclick="openNewFuelModal()"><i class="ti ti-gas-station"></i> Fuel Up</button>
         <button class="btn btn-reserve" onclick="openNewReserveModal()"><i class="ti ti-alert-triangle"></i> Hit Reserve</button>
       </div>
-      <div class="reserve-info animate-in delay-2" id="reserve-pending" style="display:none; flex-direction:column; align-items:flex-start; gap:8px;">
-        <div style="display:flex; align-items:center; gap:16px;">
-          <i class="ti ti-pulse" style="font-size:24px;"></i>
-          <span>Reserve cycle active since <strong id="reserve-pending-km" style="color:#fff">—</strong> km. <span id="reserve-est-text"></span></span>
-        </div>
+      
+      <div class="card animate-in delay-2" id="reserve-est-card" style="display:none; text-align: center; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05);">
+        <div style="font-size: 13px; font-weight: 600; letter-spacing: 1px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;"><i class="ti ti-map-pin"></i> Estimated Range</div>
+        <div class="neon-green" id="reserve-est-odo" style="font-size: 48px; font-weight: 800; letter-spacing: -1px; line-height: 1.2;"></div>
+        <div style="color: var(--text-secondary); font-size: 14px; margin-top: 8px;" id="reserve-est-subtext"></div>
       </div>
+
       <div class="metric-grid animate-in delay-2">
         <div class="metric"><div class="label"><i class="ti ti-gauge"></i> Best Mileage</div><div class="value" id="m-best">—<span class="unit">km/L</span></div></div>
-        <div class="metric"><div class="label"><i class="ti ti-trending-up"></i> Avg Mileage</div><div class="value" id="m-avg">—<span class="unit">km/L</span></div></div>
+        <div class="metric"><div class="label"><i class="ti ti-trending-up"></i> Avg Mileage (Last 10)</div><div class="value" id="m-avg">—<span class="unit">km/L</span></div></div>
         <div class="metric"><div class="label"><i class="ti ti-droplet"></i> Total Fuel</div><div class="value" id="m-fuel">—<span class="unit">L</span></div></div>
         <div class="metric"><div class="label"><i class="ti ti-currency-rupee"></i> Fuel Spend</div><div class="value" id="m-spent">—<span class="unit">₹</span></div></div>
       </div>
@@ -557,15 +558,20 @@ const utils = {
     let str = String(dStr).trim().replace(/-/g, '/');
     if (str.includes('/')) {
       const p = str.split('/');
+      if (p[0].length === 4) {
+          return new Date(`${p[0]}-${p[1].padStart(2, '0')}-${p[2].padStart(2, '0')}T00:00:00`);
+      }
       let year = p[2].length === 2 ? `20${p[2]}` : p[2];
-      return new Date(`${year}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`); 
+      return new Date(`${year}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}T00:00:00`); 
     }
-    return new Date(str);
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? new Date(0) : d;
   },
   getMonthStr: (dStr) => {
     if (dStr.includes('/')) {
       const p = dStr.split('/');
-      return `${p[2]}-${p[1]}`;
+      if (p[0].length === 4) return `${p[0]}-${p[1]}`; 
+      return `${p[2]}-${p[1]}`; 
     }
     return dStr.slice(0,7);
   }
@@ -686,8 +692,15 @@ function initDatePickers() {
 
 function setDateInput(id, val) {
     const el = document.getElementById(id);
-    if (el._flatpickr) el._flatpickr.setDate(val, false, "d/m/Y");
-    else el.value = val;
+    if (el._flatpickr) {
+        let parts = val.split('/');
+        let dateObj;
+        if(parts[0].length === 4) dateObj = new Date(`${parts[0]}-${parts[1]}-${parts[2]}T00:00:00`); 
+        else dateObj = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`); 
+        el._flatpickr.setDate(dateObj, false, "d/m/Y");
+    } else {
+        el.value = val;
+    }
 }
 
 function initModalClickOutside() { document.querySelectorAll('.modal-overlay').forEach(overlay => { overlay.addEventListener('mousedown', function(e) { if (e.target === this) closeModal(this.id); }); }); }
@@ -861,7 +874,7 @@ function saveFuel() {
       const existing = fData().find(e => e.id == editId);
       if(existing) { existing.date = date; existing.amount = amount; existing.rate = rate; existing.qty = qty; }
   } else {
-      fData().push({ id: Date.now(), date, type: 'fuel', amount, rate, qty });
+      fData().push({ id: Date.now() + Math.random(), date, type: 'fuel', amount, rate, qty });
   }
   closeModal('fuelModal'); recalcMileage(); refreshUI(); saveLocal(); showToast('Fuel log saved!', 'success');
 }
@@ -875,7 +888,7 @@ function saveReserve() {
       const existing = fData().find(e => e.id == editId);
       if(existing) { existing.date = date; existing.odo = odo; }
   } else {
-      fData().push({ id: Date.now(), date, odo, type: 'reserve' });
+      fData().push({ id: Date.now() + Math.random(), date, odo, type: 'reserve' });
   }
   closeModal('reserveModal'); recalcMileage(); refreshUI(); saveLocal(); showToast('Reserve point logged!', 'success');
 }
@@ -904,7 +917,7 @@ function saveSpend() {
       const existing = sData().find(e => e.id == editId);
       if(existing) { existing.date = date; existing.cat = cat; existing.desc = desc; existing.amount = amount; }
   } else {
-      sData().push({ date, cat, desc, amount, id: Date.now() });
+      sData().push({ date, cat, desc, amount, id: Date.now() + Math.random() });
   }
   closeModal('spendModal'); refreshUI(); saveLocal(); showToast('Maintenance record saved!', 'success');
 }
@@ -922,7 +935,7 @@ function saveOil() {
       const existing = oData().find(e => e.id == editId);
       if(existing) { existing.date = date; existing.odo = odo; existing.amount = amount; }
   } else {
-      oData().push({ id: Date.now(), date, odo, amount });
+      oData().push({ id: Date.now() + Math.random(), date, odo, amount });
   }
   closeModal('oilModal'); refreshUI(); saveLocal(); showToast('Oil change logged!', 'success');
 }
@@ -954,13 +967,13 @@ function renderFuel() {
   const arr = fData();
   const sortedAsc = [...arr].sort((a, b) => utils.parseDate(a.date) - utils.parseDate(b.date) || a.id - b.id);
   
-  const openRes = [...sortedAsc].reverse().find(e => e.type === 'reserve' && !e.mileage);
-  const isPending = openRes && sortedAsc[sortedAsc.length-1].id !== openRes.id;
+  const openRes = [...sortedAsc].reverse().find(e => e.type === 'reserve');
+  const isPending = !!openRes;
   
-  const banner = document.getElementById('reserve-pending');
+  const estCard = document.getElementById('reserve-est-card');
+
   if (isPending) { 
-      banner.style.display = 'flex'; 
-      document.getElementById('reserve-pending-km').innerText = (openRes.odo || 0).toLocaleString('en-IN'); 
+      estCard.style.display = 'block'; 
       
       const openResIdx = sortedAsc.findIndex(e => e.id === openRes.id);
       const fuelsSince = sortedAsc.slice(openResIdx + 1).filter(e => e.type === 'fuel');
@@ -968,22 +981,23 @@ function renderFuel() {
       
       const pastReserves = sortedAsc.filter(e => e.type === 'reserve' && e.mileage).slice(-10);
       
-      let estText = "Need more data for estimate.";
-      if (pastReserves.length > 0) {
+      if (pastReserves.length > 0 && litersSince > 0) {
           const avg10 = pastReserves.reduce((s,e)=>s+e.mileage, 0) / pastReserves.length;
           const estOdo = openRes.odo + (litersSince * avg10);
-          estText = `Est. next reserve: <strong style="color:#10b981">${Math.round(estOdo).toLocaleString('en-IN')} km</strong> (${litersSince.toFixed(2)}L added).`;
-      } else if (litersSince > 0) {
-          estText = `${litersSince.toFixed(2)}L added so far.`;
+          document.getElementById('reserve-est-odo').innerText = Math.round(estOdo).toLocaleString('en-IN') + ' km';
+          document.getElementById('reserve-est-subtext').innerHTML = `Based on last reserve at ${openRes.odo.toLocaleString('en-IN')} km + (${litersSince.toFixed(2)}L &times; ${avg10.toFixed(1)} km/L avg)`;
+      } else {
+          document.getElementById('reserve-est-odo').innerText = 'Data Needed';
+          document.getElementById('reserve-est-subtext').innerText = `${litersSince.toFixed(2)}L added. Add historical data to estimate range.`;
       }
-      document.getElementById('reserve-est-text').innerHTML = estText;
   }
-  else { banner.style.display = 'none'; }
+  else { estCard.style.display = 'none'; }
 
   const fuels = arr.filter(e => e.type === 'fuel');
   const reserves = arr.filter(e => e.type === 'reserve' && e.mileage);
+  const past10Reserves = reserves.slice(-10);
   
-  document.getElementById('m-avg').innerText = reserves.length ? (reserves.reduce((s,e)=>s+e.mileage,0)/reserves.length).toFixed(1) : '—';
+  document.getElementById('m-avg').innerText = past10Reserves.length ? (past10Reserves.reduce((s,e)=>s+e.mileage,0)/past10Reserves.length).toFixed(1) : '—';
   document.getElementById('m-best').innerText = reserves.length ? Math.max(...reserves.map(e=>e.mileage)).toFixed(1) : '—';
   document.getElementById('m-fuel').innerText = fuels.length ? fuels.reduce((s,e)=>s+(e.qty||0),0).toFixed(1) : '—';
   document.getElementById('m-spent').innerText = fuels.length ? Math.round(fuels.reduce((s,e)=>s+(e.amount||0),0)).toLocaleString('en-IN') : '—';
@@ -997,8 +1011,9 @@ function renderFuel() {
     empty.style.display = 'none';
     tbody.innerHTML = displayArr.map((e, i) => {
       const anim = `style="animation-delay: ${i * 0.03}s"`;
-      if (e.type === 'reserve') return `<tr class="reserve-row row-animate" ${anim}><td>${e.date}</td><td><span class="badge badge-reserve"><i class="ti ti-alert-triangle"></i> Reserve</span></td><td>${(e.odo||0).toLocaleString('en-IN')}</td><td>${e.dist?e.dist:'—'}</td><td>${e.accumulatedQty?e.accumulatedQty.toFixed(2):'—'}</td><td>—</td><td>—</td><td>${e.mileage?`<span class="badge badge-good">${e.mileage.toFixed(1)}</span>`:'—'}</td><td><div class="action-cell"><button class="edit-btn" onclick="editFuelEntry(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`;
-      return `<tr class="row-animate" ${anim}><td>${e.date}</td><td><span class="badge badge-fuel"><i class="ti ti-droplet"></i> Fuel</span></td><td>—</td><td>—</td><td>${(e.qty||0).toFixed(2)}</td><td>₹${(e.rate||0).toFixed(2)}</td><td>₹${(e.amount||0).toLocaleString('en-IN')}</td><td>—</td><td><div class="action-cell"><button class="edit-btn" onclick="editFuelEntry(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`;
+      const dtStr = e.date.includes('-') ? utils.parseDate(e.date).toLocaleDateString('en-GB') : e.date;
+      if (e.type === 'reserve') return `<tr class="reserve-row row-animate" ${anim}><td>${dtStr}</td><td><span class="badge badge-reserve"><i class="ti ti-alert-triangle"></i> Reserve</span></td><td>${(e.odo||0).toLocaleString('en-IN')}</td><td>${e.dist?e.dist:'—'}</td><td>${e.accumulatedQty?e.accumulatedQty.toFixed(2):'—'}</td><td>—</td><td>—</td><td>${e.mileage?`<span class="badge badge-good">${e.mileage.toFixed(1)}</span>`:'—'}</td><td><div class="action-cell"><button class="edit-btn" onclick="editFuelEntry(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`;
+      return `<tr class="row-animate" ${anim}><td>${dtStr}</td><td><span class="badge badge-fuel"><i class="ti ti-droplet"></i> Fuel</span></td><td>—</td><td>—</td><td>${(e.qty||0).toFixed(2)}</td><td>₹${(e.rate||0).toFixed(2)}</td><td>₹${(e.amount||0).toLocaleString('en-IN')}</td><td>—</td><td><div class="action-cell"><button class="edit-btn" onclick="editFuelEntry(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`;
     }).join('');
   }
 
@@ -1016,7 +1031,10 @@ function renderSpend() {
   if (!arr.length) { tbody.innerHTML = ''; document.getElementById('spend-empty').style.display = 'block'; }
   else {
     document.getElementById('spend-empty').style.display = 'none';
-    tbody.innerHTML = [...arr].sort((a,b)=>utils.parseDate(b.date)-utils.parseDate(a.date)).map((e, i) => `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${e.date}</td><td><span class="badge" style="background:rgba(139, 92, 246, 0.15);color:#c4b5fd;border:1px solid rgba(139, 92, 246, 0.3)">${utils.escapeHTML(e.cat)}</span></td><td>${utils.escapeHTML(e.desc)}</td><td>₹${(e.amount||0).toLocaleString('en-IN')}</td><td><div class="action-cell"><button class="edit-btn" onclick="editSpend(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteSpend(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`).join('');
+    tbody.innerHTML = [...arr].sort((a,b)=>utils.parseDate(b.date)-utils.parseDate(a.date)).map((e, i) => {
+       const dtStr = e.date.includes('-') ? utils.parseDate(e.date).toLocaleDateString('en-GB') : e.date;
+       return `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${dtStr}</td><td><span class="badge" style="background:rgba(139, 92, 246, 0.15);color:#c4b5fd;border:1px solid rgba(139, 92, 246, 0.3)">${utils.escapeHTML(e.cat)}</span></td><td>${utils.escapeHTML(e.desc)}</td><td>₹${(e.amount||0).toLocaleString('en-IN')}</td><td><div class="action-cell"><button class="edit-btn" onclick="editSpend(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteSpend(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`;
+    }).join('');
   }
 
   const catColors = { 'Service':'#3b82f6','Spare part':'#8b5cf6','Repair':'#f59e0b','Tyre':'#10b981','Insurance':'#ec4899','Other':'#64748b' };
@@ -1050,7 +1068,10 @@ function renderOil() {
   if (!sorted.length) { tbody.innerHTML = ''; document.getElementById('oil-empty').style.display = 'block'; }
   else {
     document.getElementById('oil-empty').style.display = 'none';
-    tbody.innerHTML = sorted.map((e, i) => `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${e.date}</td><td>${(e.odo||0).toLocaleString('en-IN')}</td><td>${e.amount ? '₹'+e.amount.toLocaleString('en-IN') : '—'}</td><td><div class="action-cell"><button class="edit-btn" onclick="editOilEntry(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteOilEntry(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`).join('');
+    tbody.innerHTML = sorted.map((e, i) => {
+       const dtStr = e.date.includes('-') ? utils.parseDate(e.date).toLocaleDateString('en-GB') : e.date;
+       return `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${dtStr}</td><td>${(e.odo||0).toLocaleString('en-IN')}</td><td>${e.amount ? '₹'+e.amount.toLocaleString('en-IN') : '—'}</td><td><div class="action-cell"><button class="edit-btn" onclick="editOilEntry(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteOilEntry(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`;
+    }).join('');
   }
 }
 
