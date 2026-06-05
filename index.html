@@ -610,7 +610,10 @@ function initApp() {
           
           for (let vId in appData.vehicles) {
              if (!appData.vehicles[vId].type) appData.vehicles[vId].type = 'bike';
+             // FIX 1: Initializing missing arrays prevents the fatal push() error
              if (!appData.vehicles[vId].oilEntries) appData.vehicles[vId].oilEntries = [];
+             if (!appData.vehicles[vId].fuelEntries) appData.vehicles[vId].fuelEntries = [];
+             if (!appData.vehicles[vId].spendEntries) appData.vehicles[vId].spendEntries = [];
           }
           
           if(sessionStorage.getItem('isLoggedIn') === 'true') { 
@@ -975,10 +978,11 @@ function calcQty() {
 }
 
 function saveFuel() {
-  const date = document.getElementById('f-date').value;
+  // FIX 2: Added .trim() and loosened length requirement
+  const date = document.getElementById('f-date').value.trim();
   const amount = parseFloat(document.getElementById('f-amount').value);
   const rate = parseFloat(document.getElementById('f-rate').value);
-  if (!date || date.length !== 10 || isNaN(amount) || isNaN(rate) || rate <= 0) {
+  if (!date || date.length < 8 || isNaN(amount) || isNaN(rate) || rate <= 0) {
       return showToast('Please input valid Date (DD/MM/YYYY), Amount, and Rate');
   }
   cv().lastRate = rate;
@@ -987,9 +991,10 @@ function saveFuel() {
 }
 
 function saveReserve() {
-  const date = document.getElementById('r-date').value;
+  // FIX 2: Added .trim() and loosened length requirement
+  const date = document.getElementById('r-date').value.trim();
   const odo = parseFloat(document.getElementById('r-odo').value);
-  if (!date || date.length !== 10 || isNaN(odo) || odo < 0) return showToast('Please input valid Date (DD/MM/YYYY) and Odometer');
+  if (!date || date.length < 8 || isNaN(odo) || odo < 0) return showToast('Please input valid Date (DD/MM/YYYY) and Odometer');
   fData().push({ id: Date.now(), date, odo, type: 'reserve' });
   closeModal('reserveModal'); recalcMileage(); refreshUI(); saveLocal(); showToast('Reserve point logged!', 'success');
 }
@@ -1016,11 +1021,11 @@ function recalcMileage() {
 }
 
 function saveSpend() {
-  const date = document.getElementById('s-date').value;
+  const date = document.getElementById('s-date').value.trim();
   const cat = document.getElementById('s-cat').value;
   const desc = document.getElementById('s-desc').value.trim();
   const amount = parseFloat(document.getElementById('s-amount').value);
-  if (!date || date.length !== 10 || !desc || isNaN(amount) || amount < 0) return showToast('Please fill all fields correctly');
+  if (!date || date.length < 8 || !desc || isNaN(amount) || amount < 0) return showToast('Please fill all fields correctly');
   sData().push({ date, cat, desc, amount, id: Date.now() });
   closeModal('spendModal'); refreshUI(); saveLocal(); showToast('Maintenance record saved!', 'success');
 }
@@ -1032,11 +1037,11 @@ function deleteSpend(id) {
 }
 
 function saveOil() {
-  const date = document.getElementById('oil-date').value;
+  const date = document.getElementById('oil-date').value.trim();
   const odo = parseFloat(document.getElementById('oil-odo').value);
   let amount = parseFloat(document.getElementById('oil-amount').value);
   if (isNaN(amount)) amount = null;
-  if (!date || date.length !== 10 || isNaN(odo) || odo < 0) return showToast('Valid Date (DD/MM/YYYY) and positive Odometer required.');
+  if (!date || date.length < 8 || isNaN(odo) || odo < 0) return showToast('Valid Date (DD/MM/YYYY) and positive Odometer required.');
   
   oData().push({ id: Date.now(), date, odo, amount });
   closeModal('oilModal'); refreshUI(); saveLocal(); showToast('Oil change logged!', 'success');
@@ -1253,24 +1258,27 @@ function importData(event) {
   const file = event.target.files[0];
   if(!file) return;
   const reader = new FileReader();
+  
+  // FIX 3: Using ArrayBuffer to prevent encoding corruption of the XLSX binary
   reader.onload = function(e) {
     try {
-      const data = e.target.result;
-      const wb = XLSX.read(data, {type: 'binary'});
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type: 'array'});
       
+      // We pass {raw: false} so Excel date serials convert nicely to strings
       if(wb.SheetNames.includes("Fuel_Logs")) {
-        XLSX.utils.sheet_to_json(wb.Sheets["Fuel_Logs"]).forEach(r => {
-          if(r.Date && r.Type) cv().fuelEntries.push({ id: Date.now()+Math.random(), date: r.Date, type: r.Type.toLowerCase(), odo: r.Odometer?parseFloat(r.Odometer):null, amount: r.Amount?parseFloat(r.Amount):null, rate: r.Rate?parseFloat(r.Rate):null, qty: r.Qty?parseFloat(r.Qty):null });
+        XLSX.utils.sheet_to_json(wb.Sheets["Fuel_Logs"], {raw: false}).forEach((r, i) => {
+          if(r.Date && r.Type) cv().fuelEntries.push({ id: Date.now() + i, date: String(r.Date).trim(), type: String(r.Type).toLowerCase(), odo: r.Odometer?parseFloat(r.Odometer):null, amount: r.Amount?parseFloat(r.Amount):null, rate: r.Rate?parseFloat(r.Rate):null, qty: r.Qty?parseFloat(r.Qty):null });
         });
       }
       if(wb.SheetNames.includes("Maintenance")) {
-        XLSX.utils.sheet_to_json(wb.Sheets["Maintenance"]).forEach(r => {
-          if(r.Date && r.Category && r.Amount) cv().spendEntries.push({ id: Date.now()+Math.random(), date: r.Date, cat: r.Category, desc: r.Description||'', amount: parseFloat(r.Amount) });
+        XLSX.utils.sheet_to_json(wb.Sheets["Maintenance"], {raw: false}).forEach((r, i) => {
+          if(r.Date && r.Category && r.Amount) cv().spendEntries.push({ id: Date.now() + 10000 + i, date: String(r.Date).trim(), cat: r.Category, desc: r.Description||'', amount: parseFloat(r.Amount) });
         });
       }
       if(wb.SheetNames.includes("Oil_Logs")) {
-        XLSX.utils.sheet_to_json(wb.Sheets["Oil_Logs"]).forEach(r => {
-          if(r.Date && r.Odometer) cv().oilEntries.push({ id: Date.now()+Math.random(), date: r.Date, odo: parseFloat(r.Odometer), amount: r.Amount?parseFloat(r.Amount):null });
+        XLSX.utils.sheet_to_json(wb.Sheets["Oil_Logs"], {raw: false}).forEach((r, i) => {
+          if(r.Date && r.Odometer) cv().oilEntries.push({ id: Date.now() + 20000 + i, date: String(r.Date).trim(), odo: parseFloat(r.Odometer), amount: r.Amount?parseFloat(r.Amount):null });
         });
       }
       recalcMileage(); saveLocal(); refreshUI();
@@ -1280,7 +1288,7 @@ function importData(event) {
       showToast("Error parsing file. Please ensure it matches the exported template.");
     }
   };
-  reader.readAsBinaryString(file);
+  reader.readAsArrayBuffer(file);
   event.target.value = ''; 
 }
 
