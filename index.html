@@ -542,11 +542,14 @@ const utils = {
   },
   parseDate: (dStr) => {
     if (!dStr) return new Date(0);
-    if (dStr.includes('/')) {
-      const p = dStr.split('/');
-      return new Date(`${p[2]}-${p[1]}-${p[0]}`); 
+    let str = String(dStr).trim().replace(/-/g, '/'); // Clean up dashes to slashes
+    if (str.includes('/')) {
+      const p = str.split('/');
+      // Ensure 2-digit years become 4-digit (e.g., 26 -> 2026)
+      let year = p[2].length === 2 ? `20${p[2]}` : p[2];
+      return new Date(`${year}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`); 
     }
-    return new Date(dStr);
+    return new Date(str);
   },
   getMonthStr: (dStr) => {
     if (dStr.includes('/')) {
@@ -1259,30 +1262,65 @@ function importData(event) {
   if(!file) return;
   const reader = new FileReader();
   
-  // FIX 3: Using ArrayBuffer to prevent encoding corruption of the XLSX binary
   reader.onload = function(e) {
     try {
       const data = new Uint8Array(e.target.result);
       const wb = XLSX.read(data, {type: 'array'});
       
-      // We pass {raw: false} so Excel date serials convert nicely to strings
+      // Helper function to strip currency symbols (₹, $) and commas so math doesn't break
+      const safeNum = (val) => {
+          if (val === undefined || val === null || val === '') return null;
+          const parsed = parseFloat(String(val).replace(/[^\d.-]/g, ''));
+          return isNaN(parsed) ? null : parsed;
+      };
+
       if(wb.SheetNames.includes("Fuel_Logs")) {
         XLSX.utils.sheet_to_json(wb.Sheets["Fuel_Logs"], {raw: false}).forEach((r, i) => {
-          if(r.Date && r.Type) cv().fuelEntries.push({ id: Date.now() + i, date: String(r.Date).trim(), type: String(r.Type).toLowerCase(), odo: r.Odometer?parseFloat(r.Odometer):null, amount: r.Amount?parseFloat(r.Amount):null, rate: r.Rate?parseFloat(r.Rate):null, qty: r.Qty?parseFloat(r.Qty):null });
+          if(r.Date && r.Type) {
+             // FIX: Strip invisible spaces and force strict lowercase
+             const cleanType = String(r.Type).trim().toLowerCase();
+             cv().fuelEntries.push({ 
+                 id: Date.now() + i, 
+                 date: String(r.Date).trim(), 
+                 type: cleanType, 
+                 odo: safeNum(r.Odometer), 
+                 amount: safeNum(r.Amount), 
+                 rate: safeNum(r.Rate), 
+                 qty: safeNum(r.Qty) 
+             });
+          }
         });
       }
+      
       if(wb.SheetNames.includes("Maintenance")) {
         XLSX.utils.sheet_to_json(wb.Sheets["Maintenance"], {raw: false}).forEach((r, i) => {
-          if(r.Date && r.Category && r.Amount) cv().spendEntries.push({ id: Date.now() + 10000 + i, date: String(r.Date).trim(), cat: r.Category, desc: r.Description||'', amount: parseFloat(r.Amount) });
+          if(r.Date && r.Category && r.Amount) {
+             cv().spendEntries.push({ 
+                 id: Date.now() + 10000 + i, 
+                 date: String(r.Date).trim(), 
+                 cat: String(r.Category).trim(), 
+                 desc: r.Description ? String(r.Description).trim() : '', 
+                 amount: safeNum(r.Amount) 
+             });
+          }
         });
       }
+      
       if(wb.SheetNames.includes("Oil_Logs")) {
         XLSX.utils.sheet_to_json(wb.Sheets["Oil_Logs"], {raw: false}).forEach((r, i) => {
-          if(r.Date && r.Odometer) cv().oilEntries.push({ id: Date.now() + 20000 + i, date: String(r.Date).trim(), odo: parseFloat(r.Odometer), amount: r.Amount?parseFloat(r.Amount):null });
+          if(r.Date && r.Odometer) {
+             cv().oilEntries.push({ 
+                 id: Date.now() + 20000 + i, 
+                 date: String(r.Date).trim(), 
+                 odo: safeNum(r.Odometer), 
+                 amount: safeNum(r.Amount) 
+             });
+          }
         });
       }
+      
       recalcMileage(); saveLocal(); refreshUI();
-      showToast("Data imported successfully!", "success");
+      showToast("Data imported successfully! Formatting cleaned.", "success");
     } catch(err) {
       console.error(err);
       showToast("Error parsing file. Please ensure it matches the exported template.");
@@ -1291,7 +1329,6 @@ function importData(event) {
   reader.readAsArrayBuffer(file);
   event.target.value = ''; 
 }
-
 // Boot
 initApp();
 </script>
