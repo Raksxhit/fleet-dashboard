@@ -952,25 +952,29 @@ function triggerCloudSyncAnimation() {
 
 function renderFuel() {
   const arr = fData();
-  const openRes = [...arr].reverse().find(e => e.type === 'reserve' && !e.mileage);
-  const isPending = openRes && arr[arr.length-1].id !== openRes.id;
+  const sortedAsc = [...arr].sort((a, b) => utils.parseDate(a.date) - utils.parseDate(b.date) || a.id - b.id);
+  
+  const openRes = [...sortedAsc].reverse().find(e => e.type === 'reserve' && !e.mileage);
+  const isPending = openRes && sortedAsc[sortedAsc.length-1].id !== openRes.id;
   
   const banner = document.getElementById('reserve-pending');
   if (isPending) { 
       banner.style.display = 'flex'; 
       document.getElementById('reserve-pending-km').innerText = (openRes.odo || 0).toLocaleString('en-IN'); 
       
-      const fuelsSince = arr.filter(e => e.type === 'fuel' && e.id > openRes.id);
+      const openResIdx = sortedAsc.findIndex(e => e.id === openRes.id);
+      const fuelsSince = sortedAsc.slice(openResIdx + 1).filter(e => e.type === 'fuel');
       const litersSince = fuelsSince.reduce((s, e) => s + (e.qty || 0), 0);
-      const pastReserves = arr.filter(e => e.type === 'reserve' && e.mileage).sort((a,b)=>b.id-a.id).slice(0, 10);
+      
+      const pastReserves = sortedAsc.filter(e => e.type === 'reserve' && e.mileage).slice(-10);
       
       let estText = "Need more data for estimate.";
       if (pastReserves.length > 0) {
           const avg10 = pastReserves.reduce((s,e)=>s+e.mileage, 0) / pastReserves.length;
           const estOdo = openRes.odo + (litersSince * avg10);
-          estText = `Est. next reserve: <strong style="color:#10b981">${Math.round(estOdo).toLocaleString('en-IN')} km</strong> (${litersSince.toFixed(1)}L added).`;
+          estText = `Est. next reserve: <strong style="color:#10b981">${Math.round(estOdo).toLocaleString('en-IN')} km</strong> (${litersSince.toFixed(2)}L added).`;
       } else if (litersSince > 0) {
-          estText = `${litersSince.toFixed(1)}L added so far.`;
+          estText = `${litersSince.toFixed(2)}L added so far.`;
       }
       document.getElementById('reserve-est-text').innerHTML = estText;
   }
@@ -986,7 +990,7 @@ function renderFuel() {
 
   const tbody = document.getElementById('fuel-log-body');
   const empty = document.getElementById('fuel-empty');
-  const displayArr = [...arr].sort((a, b) => utils.parseDate(b.date) - utils.parseDate(a.date) || b.id - a.id);
+  const displayArr = [...sortedAsc].reverse();
 
   if (!displayArr.length) { tbody.innerHTML = ''; empty.style.display = 'block'; }
   else {
