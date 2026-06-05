@@ -159,10 +159,16 @@
   .card:hover { border-color: var(--border-strong); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.4); }
   .section-title { font-size: 13px; font-weight: 600; letter-spacing: 1px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
   .chart-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px; }
+  .chart-full { grid-template-columns: 1fr; }
 
-  .table-responsive { overflow-x: auto; margin: 0 -10px; padding: 0 10px; -webkit-overflow-scrolling: touch; }
+  .table-responsive { max-height: 400px; overflow-y: auto; overflow-x: auto; margin: 0 -10px; padding: 0 10px; -webkit-overflow-scrolling: touch; }
+  .table-responsive::-webkit-scrollbar { width: 8px; height: 8px; }
+  .table-responsive::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
+  .table-responsive::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+  .table-responsive::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+  
   .log-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; font-size: 14px; text-align: left; min-width: 700px; }
-  .log-table th { padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; border-bottom: 1px solid var(--border-light); }
+  .log-table th { position: sticky; top: 0; background: var(--bg-surface); z-index: 10; padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; border-bottom: 1px solid var(--border-light); }
   .log-table td { padding: 16px; background: rgba(255,255,255,0.02); }
   .log-table tr td:first-child { border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
   .log-table tr td:last-child { border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
@@ -176,7 +182,12 @@
   .badge-fuel { background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3); }
   .badge-reserve { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
   .badge-good { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-  .del-btn { background: rgba(255,255,255,0.05); border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--text-secondary); font-size: 18px; padding: 6px; transition: 0.2s; display: flex; }
+  
+  .action-cell { display: flex; gap: 6px; justify-content: flex-end; }
+  .edit-btn, .del-btn { background: rgba(255,255,255,0.05); border: 1px solid transparent; border-radius: 8px; cursor: pointer; padding: 6px; transition: 0.2s; display: flex; font-size: 18px; }
+  .edit-btn { color: var(--accent-blue); }
+  .del-btn { color: var(--text-secondary); }
+  .edit-btn:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(14, 165, 233, 0.2); transform: scale(1.05); }
   .del-btn:hover { color: var(--accent-red); background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); transform: scale(1.05); }
 
   .alert-banner, .reserve-info { border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px; font-weight: 500; font-size: 14px; }
@@ -210,8 +221,6 @@
   .modal-action-btn { width: 100%; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 600; border: none; color: white; cursor: pointer; margin-top: 16px; outline: none; transition: 0.2s; }
   .modal-action-btn:hover { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
   
-  .qty-preview { font-size: 14px; font-weight: 500; color: var(--text-secondary); text-align: center; margin-bottom: 16px; height: 20px; }
-  .qty-preview span { color: var(--accent-blue); font-weight: 700; }
   #qr-container { display: flex; justify-content: center; margin: 20px 0; background: white; padding: 20px; border-radius: 16px; width: max-content; margin-inline: auto; box-shadow: inset 0 0 0 4px rgba(0,0,0,0.05); }
 
   .v-list-wrapper { max-height: 300px; overflow-y: auto; margin-bottom: 16px; border: 1px solid var(--border-strong); border-radius: 12px; }
@@ -318,12 +327,14 @@
 
     <div class="panel active" id="panel-fuel">
       <div class="action-bar animate-in delay-2">
-        <button class="btn btn-fuel" onclick="openModal('fuelModal')"><i class="ti ti-gas-station"></i> Fuel Up</button>
-        <button class="btn btn-reserve" onclick="openModal('reserveModal')"><i class="ti ti-alert-triangle"></i> Hit Reserve</button>
+        <button class="btn btn-fuel" onclick="openNewFuelModal()"><i class="ti ti-gas-station"></i> Fuel Up</button>
+        <button class="btn btn-reserve" onclick="openNewReserveModal()"><i class="ti ti-alert-triangle"></i> Hit Reserve</button>
       </div>
-      <div class="reserve-info animate-in delay-2" id="reserve-pending" style="display:none">
-        <i class="ti ti-pulse" style="font-size:24px;"></i>
-        <span>Reserve cycle active since <strong id="reserve-pending-km" style="color:#fff">—</strong> km. Next reserve calculates mileage.</span>
+      <div class="reserve-info animate-in delay-2" id="reserve-pending" style="display:none; flex-direction:column; align-items:flex-start; gap:8px;">
+        <div style="display:flex; align-items:center; gap:16px;">
+          <i class="ti ti-pulse" style="font-size:24px;"></i>
+          <span>Reserve cycle active since <strong id="reserve-pending-km" style="color:#fff">—</strong> km. <span id="reserve-est-text"></span></span>
+        </div>
       </div>
       <div class="metric-grid animate-in delay-2">
         <div class="metric"><div class="label"><i class="ti ti-gauge"></i> Best Mileage</div><div class="value" id="m-best">—<span class="unit">km/L</span></div></div>
@@ -331,9 +342,8 @@
         <div class="metric"><div class="label"><i class="ti ti-droplet"></i> Total Fuel</div><div class="value" id="m-fuel">—<span class="unit">L</span></div></div>
         <div class="metric"><div class="label"><i class="ti ti-currency-rupee"></i> Fuel Spend</div><div class="value" id="m-spent">—<span class="unit">₹</span></div></div>
       </div>
-      <div class="chart-row animate-in delay-3">
+      <div class="chart-row chart-full animate-in delay-3">
         <div class="card"><div class="section-title"><i class="ti ti-chart-line"></i> Mileage Trend (km/L)</div><div style="position:relative;height:200px"><canvas id="chart-mileage"></canvas></div></div>
-        <div class="card"><div class="section-title"><i class="ti ti-chart-bar"></i> Spend per fill-up (₹)</div><div style="position:relative;height:200px"><canvas id="chart-spend"></canvas></div></div>
       </div>
       <div class="card animate-in delay-3">
         <div class="section-title"><i class="ti ti-history"></i> Fuel History</div>
@@ -349,7 +359,7 @@
 
     <div class="panel" id="panel-spend">
       <div class="action-bar animate-in">
-        <button class="btn btn-spend" onclick="openModal('spendModal')"><i class="ti ti-plus"></i> Add Maintenance</button>
+        <button class="btn btn-spend" onclick="openNewSpendModal()"><i class="ti ti-plus"></i> Add Maintenance</button>
       </div>
       <div class="metric-grid animate-in delay-1">
         <div class="metric"><div class="label"><i class="ti ti-currency-rupee"></i> Total Spends</div><div class="value" id="s-total">—<span class="unit">₹</span></div></div>
@@ -373,7 +383,7 @@
 
     <div class="panel" id="panel-oil">
       <div class="action-bar animate-in">
-        <button class="btn btn-oil" onclick="openModal('oilModal')"><i class="ti ti-bucket-droplet"></i> Log Oil Change</button>
+        <button class="btn btn-oil" onclick="openNewOilModal()"><i class="ti ti-bucket-droplet"></i> Log Oil Change</button>
       </div>
       <div class="metric-grid animate-in delay-1">
         <div class="metric"><div class="label"><i class="ti ti-road"></i> Last Changed At</div><div class="value" id="oil-last-odo">—<span class="unit">km</span></div></div>
@@ -466,10 +476,11 @@
       <div class="modal-title" style="color: var(--accent-blue)"><i class="ti ti-gas-station"></i> Log Fuel Up</div>
       <button class="close-btn" onclick="closeModal('fuelModal')"><i class="ti ti-x"></i></button>
     </div>
+    <input type="hidden" id="f-edit-id" value="" />
     <div class="field"><label>Date (DD/MM/YYYY)</label><input type="text" class="date-picker" id="f-date" placeholder="DD/MM/YYYY" maxlength="10" /></div>
     <div class="field"><label>Amount Paid (₹)</label><input type="number" id="f-amount" placeholder="e.g. 500" min="0" oninput="debounceCalcQty()" /></div>
     <div class="field"><label>Rate (₹/L)</label><input type="number" id="f-rate" placeholder="e.g. 106.50" min="0" step="0.01" oninput="debounceCalcQty()" /></div>
-    <div class="qty-preview" id="qty-display"></div>
+    <div class="field"><label>Quantity (Liters)</label><input type="number" id="f-qty" placeholder="e.g. 4.69" min="0" step="0.01" /></div>
     <button class="modal-action-btn btn-fuel" onclick="saveFuel()">Save Fuel Log</button>
   </div>
 </div>
@@ -480,6 +491,7 @@
       <div class="modal-title" style="color: var(--accent-amber)"><i class="ti ti-alert-triangle"></i> Hit Reserve</div>
       <button class="close-btn" onclick="closeModal('reserveModal')"><i class="ti ti-x"></i></button>
     </div>
+    <input type="hidden" id="r-edit-id" value="" />
     <div class="field"><label>Date (DD/MM/YYYY)</label><input type="text" class="date-picker" id="r-date" placeholder="DD/MM/YYYY" maxlength="10" /></div>
     <div class="field"><label>Odometer (km)</label><input type="number" id="r-odo" placeholder="e.g. 12450" min="0" /></div>
     <button class="modal-action-btn btn-reserve" onclick="saveReserve()">Log Reserve Point</button>
@@ -492,6 +504,7 @@
       <div class="modal-title" style="color: var(--accent-purple)"><i class="ti ti-tool"></i> Add Maintenance</div>
       <button class="close-btn" onclick="closeModal('spendModal')"><i class="ti ti-x"></i></button>
     </div>
+    <input type="hidden" id="s-edit-id" value="" />
     <div class="field"><label>Date (DD/MM/YYYY)</label><input type="text" class="date-picker" id="s-date" placeholder="DD/MM/YYYY" maxlength="10" /></div>
     <div class="field"><label>Category</label><select id="s-cat"><option>Service</option><option>Spare part</option><option>Repair</option><option>Tyre</option><option>Insurance</option><option>Other</option></select></div>
     <div class="field"><label>Description</label><input type="text" id="s-desc" placeholder="e.g. Brake pad change" /></div>
@@ -506,6 +519,7 @@
       <div class="modal-title" style="color: var(--accent-red)"><i class="ti ti-bucket-droplet"></i> Log Oil Change</div>
       <button class="close-btn" onclick="closeModal('oilModal')"><i class="ti ti-x"></i></button>
     </div>
+    <input type="hidden" id="oil-edit-id" value="" />
     <div class="field"><label>Date (DD/MM/YYYY)</label><input type="text" class="date-picker" id="oil-date" placeholder="DD/MM/YYYY" maxlength="10" /></div>
     <div class="field"><label>Odometer (km)</label><input type="number" id="oil-odo" placeholder="e.g. 15000" min="0" /></div>
     <div class="field"><label>Amount Spent (₹) - Optional</label><input type="number" id="oil-amount" placeholder="e.g. 350" min="0" /></div>
@@ -670,6 +684,12 @@ function initDatePickers() {
   });
 }
 
+function setDateInput(id, val) {
+    const el = document.getElementById(id);
+    if (el._flatpickr) el._flatpickr.setDate(val, false, "d/m/Y");
+    else el.value = val;
+}
+
 function initModalClickOutside() { document.querySelectorAll('.modal-overlay').forEach(overlay => { overlay.addEventListener('mousedown', function(e) { if (e.target === this) closeModal(this.id); }); }); }
 
 document.addEventListener('keydown', function(e) {
@@ -703,13 +723,77 @@ function switchPanel(name, btn) {
 
 function openModal(id) {
   document.getElementById(id).classList.add('active');
-  if(id === 'fuelModal') { document.getElementById('f-date').value = todayStr; if(cv().lastRate) document.getElementById('f-rate').value = cv().lastRate; document.getElementById('qty-display').innerHTML = ''; }
-  if(id === 'reserveModal') document.getElementById('r-date').value = todayStr;
-  if(id === 'spendModal') document.getElementById('s-date').value = todayStr;
-  if(id === 'oilModal') { document.getElementById('oil-date').value = todayStr; document.getElementById('oil-amount').value = ''; document.getElementById('oil-odo').value = ''; }
   setTimeout(() => { const firstInput = document.getElementById(id).querySelector('input:not([type="hidden"]):not(.date-picker), select'); if(firstInput) firstInput.focus(); }, 50);
 }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function openNewFuelModal() {
+    document.getElementById('f-edit-id').value = '';
+    setDateInput('f-date', todayStr);
+    document.getElementById('f-amount').value = '';
+    document.getElementById('f-rate').value = cv().lastRate || '';
+    document.getElementById('f-qty').value = '';
+    openModal('fuelModal');
+}
+function openNewReserveModal() {
+    document.getElementById('r-edit-id').value = '';
+    setDateInput('r-date', todayStr);
+    document.getElementById('r-odo').value = '';
+    openModal('reserveModal');
+}
+function openNewSpendModal() {
+    document.getElementById('s-edit-id').value = '';
+    setDateInput('s-date', todayStr);
+    document.getElementById('s-desc').value = '';
+    document.getElementById('s-amount').value = '';
+    openModal('spendModal');
+}
+function openNewOilModal() {
+    document.getElementById('oil-edit-id').value = '';
+    setDateInput('oil-date', todayStr);
+    document.getElementById('oil-odo').value = '';
+    document.getElementById('oil-amount').value = '';
+    openModal('oilModal');
+}
+
+function editFuelEntry(id) {
+    const e = fData().find(x => x.id === id);
+    if(!e) return;
+    if(e.type === 'fuel') {
+        document.getElementById('f-edit-id').value = id;
+        setDateInput('f-date', e.date);
+        document.getElementById('f-amount').value = e.amount;
+        document.getElementById('f-rate').value = e.rate;
+        document.getElementById('f-qty').value = e.qty;
+        openModal('fuelModal');
+    } else {
+        document.getElementById('r-edit-id').value = id;
+        setDateInput('r-date', e.date);
+        document.getElementById('r-odo').value = e.odo;
+        openModal('reserveModal');
+    }
+}
+function editSpend(id) {
+    const e = sData().find(x => x.id === id);
+    if(e) {
+        document.getElementById('s-edit-id').value = id;
+        setDateInput('s-date', e.date);
+        document.getElementById('s-cat').value = e.cat;
+        document.getElementById('s-desc').value = e.desc;
+        document.getElementById('s-amount').value = e.amount;
+        openModal('spendModal');
+    }
+}
+function editOilEntry(id) {
+    const e = oData().find(x => x.id === id);
+    if(e) {
+        document.getElementById('oil-edit-id').value = id;
+        setDateInput('oil-date', e.date);
+        document.getElementById('oil-odo').value = e.odo;
+        document.getElementById('oil-amount').value = e.amount || '';
+        openModal('oilModal');
+    }
+}
 
 function cv() { return appData.vehicles[appData.currentVehicleId] || Object.values(appData.vehicles)[0]; }
 function fData() { return cv().fuelEntries; }
@@ -759,22 +843,40 @@ function saveVehicle() {
 let calcTimeout;
 function debounceCalcQty() { clearTimeout(calcTimeout); calcTimeout = setTimeout(calcQty, 300); }
 function calcQty() {
-  const amt = parseFloat(document.getElementById('f-amount').value); const rate = parseFloat(document.getElementById('f-rate').value); const display = document.getElementById('qty-display');
-  if (amt > 0 && rate > 0 && !isNaN(amt) && !isNaN(rate)) display.innerHTML = `Calculated Quantity: <span>${(amt/rate).toFixed(2)} L</span>`;
-  else display.innerHTML = '';
+  const amt = parseFloat(document.getElementById('f-amount').value); 
+  const rate = parseFloat(document.getElementById('f-rate').value); 
+  const qtyInput = document.getElementById('f-qty');
+  if (amt > 0 && rate > 0 && !isNaN(amt) && !isNaN(rate)) qtyInput.value = (amt/rate).toFixed(2);
 }
 
 function saveFuel() {
-  const date = document.getElementById('f-date').value.trim(); const amount = parseFloat(document.getElementById('f-amount').value); const rate = parseFloat(document.getElementById('f-rate').value);
-  if (!date || date.length < 8 || isNaN(amount) || isNaN(rate) || rate <= 0) return showToast('Please input valid Date (DD/MM/YYYY), Amount, and Rate');
-  cv().lastRate = rate; fData().push({ id: Date.now(), date, type: 'fuel', amount, rate, qty: amount/rate });
+  const editId = document.getElementById('f-edit-id').value;
+  const date = document.getElementById('f-date').value.trim(); 
+  const amount = parseFloat(document.getElementById('f-amount').value); 
+  const rate = parseFloat(document.getElementById('f-rate').value);
+  const qty = parseFloat(document.getElementById('f-qty').value);
+  if (!date || date.length < 8 || isNaN(amount) || isNaN(rate) || rate <= 0 || isNaN(qty) || qty <= 0) return showToast('Please input valid Date (DD/MM/YYYY), Amount, Rate, and Quantity');
+  cv().lastRate = rate; 
+  if(editId) {
+      const existing = fData().find(e => e.id == editId);
+      if(existing) { existing.date = date; existing.amount = amount; existing.rate = rate; existing.qty = qty; }
+  } else {
+      fData().push({ id: Date.now(), date, type: 'fuel', amount, rate, qty });
+  }
   closeModal('fuelModal'); recalcMileage(); refreshUI(); saveLocal(); showToast('Fuel log saved!', 'success');
 }
 
 function saveReserve() {
-  const date = document.getElementById('r-date').value.trim(); const odo = parseFloat(document.getElementById('r-odo').value);
+  const editId = document.getElementById('r-edit-id').value;
+  const date = document.getElementById('r-date').value.trim(); 
+  const odo = parseFloat(document.getElementById('r-odo').value);
   if (!date || date.length < 8 || isNaN(odo) || odo < 0) return showToast('Please input valid Date (DD/MM/YYYY) and Odometer');
-  fData().push({ id: Date.now(), date, odo, type: 'reserve' });
+  if(editId) {
+      const existing = fData().find(e => e.id == editId);
+      if(existing) { existing.date = date; existing.odo = odo; }
+  } else {
+      fData().push({ id: Date.now(), date, odo, type: 'reserve' });
+  }
   closeModal('reserveModal'); recalcMileage(); refreshUI(); saveLocal(); showToast('Reserve point logged!', 'success');
 }
 
@@ -792,19 +894,36 @@ function recalcMileage() {
 }
 
 function saveSpend() {
-  const date = document.getElementById('s-date').value.trim(); const cat = document.getElementById('s-cat').value; const desc = document.getElementById('s-desc').value.trim(); const amount = parseFloat(document.getElementById('s-amount').value);
+  const editId = document.getElementById('s-edit-id').value;
+  const date = document.getElementById('s-date').value.trim(); 
+  const cat = document.getElementById('s-cat').value; 
+  const desc = document.getElementById('s-desc').value.trim(); 
+  const amount = parseFloat(document.getElementById('s-amount').value);
   if (!date || date.length < 8 || !desc || isNaN(amount) || amount < 0) return showToast('Please fill all fields correctly');
-  sData().push({ date, cat, desc, amount, id: Date.now() });
+  if(editId) {
+      const existing = sData().find(e => e.id == editId);
+      if(existing) { existing.date = date; existing.cat = cat; existing.desc = desc; existing.amount = amount; }
+  } else {
+      sData().push({ date, cat, desc, amount, id: Date.now() });
+  }
   closeModal('spendModal'); refreshUI(); saveLocal(); showToast('Maintenance record saved!', 'success');
 }
 
 function deleteSpend(id) { customConfirm("Delete this maintenance record?", () => { cv().spendEntries = sData().filter(e => e.id !== id); refreshUI(); saveLocal(); }); }
 
 function saveOil() {
-  const date = document.getElementById('oil-date').value.trim(); const odo = parseFloat(document.getElementById('oil-odo').value); let amount = parseFloat(document.getElementById('oil-amount').value);
+  const editId = document.getElementById('oil-edit-id').value;
+  const date = document.getElementById('oil-date').value.trim(); 
+  const odo = parseFloat(document.getElementById('oil-odo').value); 
+  let amount = parseFloat(document.getElementById('oil-amount').value);
   if (isNaN(amount)) amount = null;
   if (!date || date.length < 8 || isNaN(odo) || odo < 0) return showToast('Valid Date (DD/MM/YYYY) and positive Odometer required.');
-  oData().push({ id: Date.now(), date, odo, amount });
+  if(editId) {
+      const existing = oData().find(e => e.id == editId);
+      if(existing) { existing.date = date; existing.odo = odo; existing.amount = amount; }
+  } else {
+      oData().push({ id: Date.now(), date, odo, amount });
+  }
   closeModal('oilModal'); refreshUI(); saveLocal(); showToast('Oil change logged!', 'success');
 }
 
@@ -815,7 +934,7 @@ function checkOilAlert() {
   if (!oilArr.length) { banner.style.display = 'none'; return; }
   const lastOilOdo = Math.max(...oilArr.map(e => e.odo || 0));
   let currentOdo = lastOilOdo;
-  fData().forEach(e => { if(e.odo > currentOdo) currentOdo = e.odo; });
+  fData().forEach(e => { if((e.odo||0) > currentOdo) currentOdo = (e.odo||0); });
   if (currentOdo - lastOilOdo >= 3000) { banner.style.display = 'flex'; document.getElementById('oil-alert-text').innerText = `Oil Change Overdue! It has been ${Math.round(currentOdo - lastOilOdo).toLocaleString('en-IN')} km since your last recorded replacement.`; }
   else { banner.style.display = 'none'; }
 }
@@ -837,7 +956,24 @@ function renderFuel() {
   const isPending = openRes && arr[arr.length-1].id !== openRes.id;
   
   const banner = document.getElementById('reserve-pending');
-  if (isPending) { banner.style.display = 'flex'; document.getElementById('reserve-pending-km').innerText = (openRes.odo || 0).toLocaleString('en-IN'); }
+  if (isPending) { 
+      banner.style.display = 'flex'; 
+      document.getElementById('reserve-pending-km').innerText = (openRes.odo || 0).toLocaleString('en-IN'); 
+      
+      const fuelsSince = arr.filter(e => e.type === 'fuel' && e.id > openRes.id);
+      const litersSince = fuelsSince.reduce((s, e) => s + (e.qty || 0), 0);
+      const pastReserves = arr.filter(e => e.type === 'reserve' && e.mileage).sort((a,b)=>b.id-a.id).slice(0, 10);
+      
+      let estText = "Need more data for estimate.";
+      if (pastReserves.length > 0) {
+          const avg10 = pastReserves.reduce((s,e)=>s+e.mileage, 0) / pastReserves.length;
+          const estOdo = openRes.odo + (litersSince * avg10);
+          estText = `Est. next reserve: <strong style="color:#10b981">${Math.round(estOdo).toLocaleString('en-IN')} km</strong> (${litersSince.toFixed(1)}L added).`;
+      } else if (litersSince > 0) {
+          estText = `${litersSince.toFixed(1)}L added so far.`;
+      }
+      document.getElementById('reserve-est-text').innerHTML = estText;
+  }
   else { banner.style.display = 'none'; }
 
   const fuels = arr.filter(e => e.type === 'fuel');
@@ -857,16 +993,14 @@ function renderFuel() {
     empty.style.display = 'none';
     tbody.innerHTML = displayArr.map((e, i) => {
       const anim = `style="animation-delay: ${i * 0.03}s"`;
-      if (e.type === 'reserve') return `<tr class="reserve-row row-animate" ${anim}><td>${e.date}</td><td><span class="badge badge-reserve"><i class="ti ti-alert-triangle"></i> Reserve</span></td><td>${(e.odo||0).toLocaleString('en-IN')}</td><td>${e.dist?e.dist:'—'}</td><td>${e.accumulatedQty?e.accumulatedQty.toFixed(2):'—'}</td><td>—</td><td>—</td><td>${e.mileage?`<span class="badge badge-good">${e.mileage.toFixed(1)}</span>`:'—'}</td><td><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`;
-      return `<tr class="row-animate" ${anim}><td>${e.date}</td><td><span class="badge badge-fuel"><i class="ti ti-droplet"></i> Fuel</span></td><td>—</td><td>—</td><td>${(e.qty||0).toFixed(2)}</td><td>₹${(e.rate||0).toFixed(2)}</td><td>₹${(e.amount||0).toLocaleString('en-IN')}</td><td>—</td><td><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`;
+      if (e.type === 'reserve') return `<tr class="reserve-row row-animate" ${anim}><td>${e.date}</td><td><span class="badge badge-reserve"><i class="ti ti-alert-triangle"></i> Reserve</span></td><td>${(e.odo||0).toLocaleString('en-IN')}</td><td>${e.dist?e.dist:'—'}</td><td>${e.accumulatedQty?e.accumulatedQty.toFixed(2):'—'}</td><td>—</td><td>—</td><td>${e.mileage?`<span class="badge badge-good">${e.mileage.toFixed(1)}</span>`:'—'}</td><td><div class="action-cell"><button class="edit-btn" onclick="editFuelEntry(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`;
+      return `<tr class="row-animate" ${anim}><td>${e.date}</td><td><span class="badge badge-fuel"><i class="ti ti-droplet"></i> Fuel</span></td><td>—</td><td>—</td><td>${(e.qty||0).toFixed(2)}</td><td>₹${(e.rate||0).toFixed(2)}</td><td>₹${(e.amount||0).toLocaleString('en-IN')}</td><td>—</td><td><div class="action-cell"><button class="edit-btn" onclick="editFuelEntry(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteFuelEntry(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`;
     }).join('');
   }
 
   if(charts.mil) charts.mil.destroy();
-  charts.mil = new Chart(document.getElementById('chart-mileage'), { type: 'line', data: { labels: reserves.map((_,i)=>`Cycle ${i+1}`), datasets: [{ data: reserves.map(e=>e.mileage||0), borderColor: '#0ea5e9', backgroundColor: 'rgba(14, 165, 233, 0.1)', fill: true, tension: 0.4, pointBackgroundColor: '#0ea5e9', pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { color: 'rgba(255,255,255,0.05)' } } } } });
-  
-  if(charts.fsp) charts.fsp.destroy();
-  charts.fsp = new Chart(document.getElementById('chart-spend'), { type: 'bar', data: { labels: fuels.map((_,i)=>`Fill #${i+1}`), datasets: [{ data: fuels.map(e=>e.amount||0), backgroundColor: '#0ea5e9', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } } });
+  const chartReserves = reserves.slice(-30);
+  charts.mil = new Chart(document.getElementById('chart-mileage'), { type: 'line', data: { labels: chartReserves.map((_,i)=>`Cycle ${reserves.length - chartReserves.length + i + 1}`), datasets: [{ data: chartReserves.map(e=>e.mileage||0), borderColor: '#0ea5e9', backgroundColor: 'rgba(14, 165, 233, 0.1)', fill: true, tension: 0.4, pointBackgroundColor: '#0ea5e9', pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { color: 'rgba(255,255,255,0.05)' } } } } });
 }
 
 function renderSpend() {
@@ -878,7 +1012,7 @@ function renderSpend() {
   if (!arr.length) { tbody.innerHTML = ''; document.getElementById('spend-empty').style.display = 'block'; }
   else {
     document.getElementById('spend-empty').style.display = 'none';
-    tbody.innerHTML = [...arr].sort((a,b)=>utils.parseDate(b.date)-utils.parseDate(a.date)).map((e, i) => `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${e.date}</td><td><span class="badge" style="background:rgba(139, 92, 246, 0.15);color:#c4b5fd;border:1px solid rgba(139, 92, 246, 0.3)">${utils.escapeHTML(e.cat)}</span></td><td>${utils.escapeHTML(e.desc)}</td><td>₹${(e.amount||0).toLocaleString('en-IN')}</td><td><button class="del-btn" onclick="deleteSpend(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`).join('');
+    tbody.innerHTML = [...arr].sort((a,b)=>utils.parseDate(b.date)-utils.parseDate(a.date)).map((e, i) => `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${e.date}</td><td><span class="badge" style="background:rgba(139, 92, 246, 0.15);color:#c4b5fd;border:1px solid rgba(139, 92, 246, 0.3)">${utils.escapeHTML(e.cat)}</span></td><td>${utils.escapeHTML(e.desc)}</td><td>₹${(e.amount||0).toLocaleString('en-IN')}</td><td><div class="action-cell"><button class="edit-btn" onclick="editSpend(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteSpend(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`).join('');
   }
 
   const catColors = { 'Service':'#3b82f6','Spare part':'#8b5cf6','Repair':'#f59e0b','Tyre':'#10b981','Insurance':'#ec4899','Other':'#64748b' };
@@ -912,7 +1046,7 @@ function renderOil() {
   if (!sorted.length) { tbody.innerHTML = ''; document.getElementById('oil-empty').style.display = 'block'; }
   else {
     document.getElementById('oil-empty').style.display = 'none';
-    tbody.innerHTML = sorted.map((e, i) => `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${e.date}</td><td>${(e.odo||0).toLocaleString('en-IN')}</td><td>${e.amount ? '₹'+e.amount.toLocaleString('en-IN') : '—'}</td><td><button class="del-btn" onclick="deleteOilEntry(${e.id})"><i class="ti ti-trash"></i></button></td></tr>`).join('');
+    tbody.innerHTML = sorted.map((e, i) => `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${e.date}</td><td>${(e.odo||0).toLocaleString('en-IN')}</td><td>${e.amount ? '₹'+e.amount.toLocaleString('en-IN') : '—'}</td><td><div class="action-cell"><button class="edit-btn" onclick="editOilEntry(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteOilEntry(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`).join('');
   }
 }
 
@@ -996,28 +1130,32 @@ function importData(event) {
       const data = new Uint8Array(e.target.result);
       const wb = XLSX.read(data, {type: 'array'});
       
-      // CRITICAL FIX: Gracefully converts missing/blank text/currency into a solid 0
       const safeNum = (val) => {
           if (val === undefined || val === null || String(val).trim() === '') return 0;
           const parsed = parseFloat(String(val).replace(/[^\d.-]/g, ''));
           return isNaN(parsed) ? 0 : parsed;
       };
 
-      // Bulletproof Sheet Name Matching
       const sheetNames = wb.SheetNames.map(s => s.trim().toLowerCase());
       
       const fuelIdx = sheetNames.indexOf("fuel_logs");
       if(fuelIdx > -1) {
         XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[fuelIdx]], {raw: false, defval: ""}).forEach((r, i) => {
           if(r.Date && r.Type) {
+             let amt = safeNum(r.Amount);
+             let rate = safeNum(r.Rate);
+             let qty = safeNum(r.Qty);
+             
+             if (qty === 0 && amt > 0 && rate > 0) qty = amt / rate;
+
              cv().fuelEntries.push({ 
                  id: Date.now() + Math.random(), 
                  date: String(r.Date).trim(), 
                  type: String(r.Type).trim().toLowerCase(), 
                  odo: safeNum(r.Odometer), 
-                 amount: safeNum(r.Amount), 
-                 rate: safeNum(r.Rate), 
-                 qty: safeNum(r.Qty) 
+                 amount: amt, 
+                 rate: rate, 
+                 qty: qty 
              });
           }
         });
@@ -1053,10 +1191,10 @@ function importData(event) {
       }
       
       recalcMileage(); saveLocal(); refreshUI();
-      showToast("Data imported successfully! Formatting cleaned.", "success");
+      showToast("Data imported successfully!", "success");
     } catch(err) {
       console.error(err);
-      showToast("Error parsing file. Please check console.");
+      showToast("Error parsing file.");
     }
   };
   reader.readAsArrayBuffer(file);
