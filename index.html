@@ -611,6 +611,7 @@ let charts = {};
 let currentTotpSetup = null; 
 let isFirstLoad = true;
 let isLocalSaving = false; 
+let allowExit = false;
 
 let appData = {
   version: 4,
@@ -677,11 +678,47 @@ function initApp() {
   window.addEventListener('offline', () => { document.getElementById('connection-dot').classList.add('offline'); document.getElementById('connection-text').innerText = 'Offline'; });
   window.addEventListener('online', () => { document.getElementById('connection-dot').classList.remove('offline'); document.getElementById('connection-text').innerText = 'Live'; });
 
-  if(sessionStorage.getItem('isLoggedIn') === 'true') unlockApp(); 
-  else setTimeout(() => document.getElementById('auth-pwd').focus(), 100);
+  if(sessionStorage.getItem('isLoggedIn') === 'true') { unlockApp(); } 
+  else { setTimeout(() => document.getElementById('auth-pwd').focus(), 100); }
 
   initDatePickers(); initModalClickOutside();
 }
+
+// Hardware Back Button Hook logic
+window.addEventListener('popstate', function(e) {
+    if (allowExit) return; 
+
+    let handled = false;
+    const optionsMenu = document.getElementById("optionsMenu");
+    const vehicleMenu = document.getElementById("vehicle-options-list");
+    const activeModal = document.querySelector('.modal-overlay.active');
+
+    // If dropdowns are open, just close them
+    if (optionsMenu.classList.contains('show')) {
+        optionsMenu.classList.remove('show');
+        handled = true;
+    }
+    if (vehicleMenu.classList.contains('show')) {
+        vehicleMenu.classList.remove('show');
+        handled = true;
+    }
+    // If a modal is open, just close it
+    if (activeModal) {
+        closeModal(activeModal.id);
+        handled = true;
+    }
+
+    // Always push a state so the back button is "trapped" again for next time
+    history.pushState({ app: 'locked' }, document.title, window.location.href);
+
+    // If nothing was open, ask for exit confirmation
+    if (!handled) {
+        customConfirm("Are you sure you want to close the dashboard?", () => {
+            allowExit = true;
+            window.history.back(); // Proceed to actually exit the page
+        }, "Exit App");
+    }
+});
 
 function saveLocal() { 
   try { localStorage.setItem('bikeDataStore', JSON.stringify(appData)); } catch(e) {}
@@ -702,7 +739,12 @@ function showToast(msg, type = 'error') {
 }
 
 let pendingConfirmCallback = null;
-function customConfirm(msg, callback) { document.getElementById('confirm-msg').innerText = msg; pendingConfirmCallback = callback; openModal('confirmModal'); }
+function customConfirm(msg, callback, btnText = 'Delete') { 
+    document.getElementById('confirm-msg').innerHTML = msg; 
+    document.getElementById('confirm-yes-btn').innerText = btnText;
+    pendingConfirmCallback = callback; 
+    openModal('confirmModal'); 
+}
 document.getElementById('confirm-yes-btn').addEventListener('click', () => { if (pendingConfirmCallback) pendingConfirmCallback(); closeModal('confirmModal'); });
 
 function initDatePickers() {
@@ -747,7 +789,17 @@ function attemptLogin() {
   else { pwdInput.classList.add('error-shake'); if (navigator.vibrate) navigator.vibrate(200); setTimeout(() => { pwdInput.classList.remove('error-shake'); pwdInput.value = ''; pwdInput.focus(); }, 400); }
 }
 
-function unlockApp() { document.body.classList.add('logged-in'); document.getElementById('login-screen').style.display = 'none'; document.getElementById('app-main').style.display = 'block'; document.getElementById('auth-pwd').value = ''; populateVehicleSelect(); refreshUI(); }
+function unlockApp() { 
+  document.body.classList.add('logged-in'); 
+  document.getElementById('login-screen').style.display = 'none'; 
+  document.getElementById('app-main').style.display = 'block'; 
+  document.getElementById('auth-pwd').value = ''; 
+  populateVehicleSelect(); 
+  refreshUI(); 
+  // Push state initially so the back button hook works right away
+  history.pushState({ app: 'locked' }, document.title, window.location.href);
+}
+
 function logout() { sessionStorage.removeItem('isLoggedIn'); document.body.classList.remove('logged-in'); document.getElementById('login-screen').style.display = 'flex'; document.getElementById('app-main').style.display = 'none'; setTimeout(() => document.getElementById('auth-pwd').focus(), 100); }
 
 document.getElementById('options-toggle-btn').addEventListener('click', function(e) { e.stopPropagation(); document.getElementById("vehicle-options-list").classList.remove("show"); document.getElementById("optionsMenu").classList.toggle("show"); });
@@ -1003,11 +1055,12 @@ function renderFuel() {
   const past10Reserves = reserves.slice(-10);
   const past5Reserves = reserves.slice(-5);
   
-  // Calculate Cumulative Average for the chart
-  let runSum = 0;
+  // Calculate true 5-Cycle Moving Average (SMA) for the chart
   reserves.forEach((req, idx) => {
-     runSum += req.mileage;
-     req.cumAvg = runSum / (idx + 1);
+     const start = Math.max(0, idx - 4); // grabs the last 5 records including the current one
+     const subset = reserves.slice(start, idx + 1);
+     const sum = subset.reduce((acc, curr) => acc + (curr.mileage || 0), 0);
+     req.movAvg = sum / subset.length;
   });
 
   if (isPending) { 
@@ -1073,8 +1126,8 @@ function renderFuel() {
           pointRadius: 3 
         },
         {
-          label: 'Avg Till Date',
-          data: chartReserves.map(e => e.cumAvg || 0),
+          label: '5-Cycle Moving Avg',
+          data: chartReserves.map(e => e.movAvg || 0),
           borderColor: '#10b981',
           borderDash: [5, 5],
           borderWidth: 2,
