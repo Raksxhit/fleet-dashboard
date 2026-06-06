@@ -36,6 +36,11 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   
+  /* Mobile tap highlight fix */
+  button, a, .custom-dropdown-selected, .top-tab, .v-list-item, .icon-btn, input, select {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
   input::-webkit-outer-spin-button,
   input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   input[type=number] { -moz-appearance: textfield; }
@@ -98,10 +103,10 @@
   .icon-btn:hover { background: var(--bg-surface-hover); border-color: rgba(255,255,255,0.3); }
   .icon-btn:hover i { color: var(--text-primary); }
 
-  .logout-btn { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: var(--accent-red); width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); outline: none; }
-  .logout-btn i { font-size: 22px; transition: transform 0.3s; }
+  .logout-btn { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: var(--accent-red); width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); outline: none; }
+  .logout-btn i { font-size: 22px; transition: transform 0.2s; }
   .logout-btn:hover { background: var(--accent-red); color: white; box-shadow: 0 8px 20px -6px rgba(239, 68, 68, 0.6); transform: translateY(-2px); }
-  .logout-btn:active { transform: scale(0.95); }
+  .logout-btn:active { transform: scale(0.92); background: rgba(185, 28, 28, 0.8); box-shadow: inset 0 4px 8px rgba(0,0,0,0.5); }
 
   .dropdown { position: relative; display: inline-block; }
   .dropdown-content { display: none; position: absolute; right: 0; top: 100%; margin-top: 10px; background-color: #0f172a !important; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; min-width: 240px; z-index: 2147483647; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.8), 0 4px 6px -4px rgba(0, 0, 0, 0.8), 0 25px 50px -12px rgba(0, 0, 0, 0.9); padding: 8px; }
@@ -121,9 +126,9 @@
   @keyframes slideInRight { from { opacity: 0; transform: translateX(-15px); } to { opacity: 1; transform: translateX(0); } }
   @keyframes pulseSubtle { 0%, 100% { opacity: 0.3; transform: scale(0.98); } 50% { opacity: 0.7; transform: scale(1); } }
   @keyframes fadeOutRight { to { opacity: 0; transform: translateX(20px); } }
-  @keyframes blinkNeonGreen { 0% { text-shadow: 0 0 10px rgba(16, 185, 129, 0.6), 0 0 20px rgba(16, 185, 129, 0.4); opacity: 1; } 100% { text-shadow: 0 0 5px rgba(16, 185, 129, 0.3), 0 0 10px rgba(16, 185, 129, 0.1); opacity: 0.8; } }
+  @keyframes blinkNeonGreen { 0% { text-shadow: 0 0 10px rgba(16, 185, 129, 0.8), 0 0 20px rgba(16, 185, 129, 0.6), 0 0 30px rgba(16, 185, 129, 0.4); opacity: 1; } 100% { text-shadow: 0 0 5px rgba(16, 185, 129, 0.4), 0 0 10px rgba(16, 185, 129, 0.2); opacity: 0.8; } }
   
-  .neon-green { color: #10b981; animation: blinkNeonGreen 1.2s infinite alternate; }
+  .neon-green { color: #10b981; animation: blinkNeonGreen 0.7s infinite alternate; }
 
   .animate-in { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
   .delay-1 { animation-delay: 0.05s; } .delay-2 { animation-delay: 0.1s; } .delay-3 { animation-delay: 0.15s; }
@@ -235,6 +240,13 @@
   .manage-form-container { display: none; padding-top: 16px; border-top: 1px solid var(--border-strong); }
   .manage-form-container.active { display: block; animation: fadeUp 0.3s forwards; }
 
+  /* Subtext styling to ensure it never breaks onto a new line */
+  #reserve-est-subtext {
+      white-space: nowrap; 
+      font-size: clamp(10px, 3.5vw, 14px); 
+      letter-spacing: -0.2px;
+  }
+
   @media (max-width: 768px) {
     .app-container { padding: 16px; }
     .top-header { flex-direction: column; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
@@ -337,21 +349,30 @@
         <button class="btn btn-reserve" onclick="openNewReserveModal()"><i class="ti ti-alert-triangle"></i> Hit Reserve</button>
       </div>
       
-      <!-- Neon Estimated Range Card -->
       <div class="card animate-in delay-2" id="reserve-est-card" style="display:none; text-align: center; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05);">
         <div style="font-size: 13px; font-weight: 600; letter-spacing: 1px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;"><i class="ti ti-map-pin"></i> Estimated Range</div>
         <div class="neon-green" id="reserve-est-odo" style="font-size: 48px; font-weight: 800; letter-spacing: -1px; line-height: 1.2;"></div>
-        <div style="color: var(--text-secondary); font-size: 14px; margin-top: 8px;" id="reserve-est-subtext"></div>
+        <div style="color: var(--text-secondary); margin-top: 8px;" id="reserve-est-subtext"></div>
       </div>
 
       <div class="metric-grid animate-in delay-2">
         <div class="metric"><div class="label"><i class="ti ti-gauge"></i> Best Mileage</div><div class="value" id="m-best">—<span class="unit">km/L</span></div></div>
-        <div class="metric"><div class="label"><i class="ti ti-trending-up"></i> Avg Mileage (Last 10)</div><div class="value" id="m-avg">—<span class="unit">km/L</span></div></div>
+        
+        <div class="metric">
+          <div class="label"><i class="ti ti-trending-up"></i> Avg (Last 5 / 10)</div>
+          <div class="value">
+            <span id="m-avg-5" style="color: #34d399;">—</span>
+            <span style="font-size: 20px; color: var(--border-strong); margin: 0 4px;">/</span>
+            <span id="m-avg" style="font-size: 22px; color: var(--text-secondary);">—</span>
+            <span class="unit" style="margin-left: 4px;">km/L</span>
+          </div>
+        </div>
+
         <div class="metric"><div class="label"><i class="ti ti-droplet"></i> Total Fuel</div><div class="value" id="m-fuel">—<span class="unit">L</span></div></div>
         <div class="metric"><div class="label"><i class="ti ti-currency-rupee"></i> Fuel Spend</div><div class="value" id="m-spent">—<span class="unit">₹</span></div></div>
       </div>
       <div class="chart-row chart-full animate-in delay-3">
-        <div class="card"><div class="section-title"><i class="ti ti-chart-line"></i> Mileage Trend (km/L)</div><div style="position:relative;height:200px"><canvas id="chart-mileage"></canvas></div></div>
+        <div class="card"><div class="section-title"><i class="ti ti-chart-line"></i> Mileage Trend (km/L)</div><div style="position:relative;height:260px"><canvas id="chart-mileage"></canvas></div></div>
       </div>
       <div class="card animate-in delay-3">
         <div class="section-title"><i class="ti ti-history"></i> Fuel History</div>
@@ -976,8 +997,18 @@ function renderFuel() {
   
   const openRes = [...sortedAsc].reverse().find(e => e.type === 'reserve');
   const isPending = !!openRes;
-  
   const estCard = document.getElementById('reserve-est-card');
+
+  const reserves = sortedAsc.filter(e => e.type === 'reserve' && e.mileage);
+  const past10Reserves = reserves.slice(-10);
+  const past5Reserves = reserves.slice(-5);
+  
+  // Calculate Cumulative Average for the chart
+  let runSum = 0;
+  reserves.forEach((req, idx) => {
+     runSum += req.mileage;
+     req.cumAvg = runSum / (idx + 1);
+  });
 
   if (isPending) { 
       estCard.style.display = 'block'; 
@@ -986,14 +1017,12 @@ function renderFuel() {
       const fuelsSince = sortedAsc.slice(openResIdx + 1).filter(e => e.type === 'fuel');
       const litersSince = fuelsSince.reduce((s, e) => s + (e.qty || 0), 0);
       
-      const pastReserves = sortedAsc.filter(e => e.type === 'reserve' && e.mileage).slice(-10);
-      
       let estText = "";
-      if (pastReserves.length > 0 && litersSince > 0) {
-          const avg10 = pastReserves.reduce((s,e)=>s+e.mileage, 0) / pastReserves.length;
-          const estOdo = openRes.odo + (litersSince * avg10);
+      if (past5Reserves.length > 0 && litersSince > 0) {
+          const avg5 = past5Reserves.reduce((s,e)=>s+e.mileage, 0) / past5Reserves.length;
+          const estOdo = openRes.odo + (litersSince * avg5);
           document.getElementById('reserve-est-odo').innerText = Math.round(estOdo).toLocaleString('en-IN') + ' km';
-          document.getElementById('reserve-est-subtext').innerHTML = `Based on last reserve at ${openRes.odo.toLocaleString('en-IN')} km + (${litersSince.toFixed(2)}L &times; ${avg10.toFixed(1)} km/L avg)`;
+          document.getElementById('reserve-est-subtext').innerHTML = `Based on last reserve at ${openRes.odo.toLocaleString('en-IN')} km + (${litersSince.toFixed(2)}L &times; ${avg5.toFixed(1)} km/L avg)`;
       } else {
           document.getElementById('reserve-est-odo').innerText = 'Data Needed';
           document.getElementById('reserve-est-subtext').innerText = `${litersSince.toFixed(2)}L added. Add historical data to estimate range.`;
@@ -1002,10 +1031,9 @@ function renderFuel() {
   else { estCard.style.display = 'none'; }
 
   const fuels = arr.filter(e => e.type === 'fuel');
-  const reserves = arr.filter(e => e.type === 'reserve' && e.mileage);
-  const past10Reserves = reserves.slice(-10);
   
   document.getElementById('m-avg').innerText = past10Reserves.length ? (past10Reserves.reduce((s,e)=>s+e.mileage,0)/past10Reserves.length).toFixed(1) : '—';
+  document.getElementById('m-avg-5').innerText = past5Reserves.length ? (past5Reserves.reduce((s,e)=>s+e.mileage,0)/past5Reserves.length).toFixed(1) : '—';
   document.getElementById('m-best').innerText = reserves.length ? Math.max(...reserves.map(e=>e.mileage)).toFixed(1) : '—';
   document.getElementById('m-fuel').innerText = fuels.length ? fuels.reduce((s,e)=>s+(e.qty||0),0).toFixed(1) : '—';
   document.getElementById('m-spent').innerText = fuels.length ? Math.round(fuels.reduce((s,e)=>s+(e.amount||0),0)).toLocaleString('en-IN') : '—';
@@ -1027,7 +1055,50 @@ function renderFuel() {
 
   if(charts.mil) charts.mil.destroy();
   const chartReserves = reserves.slice(-30);
-  charts.mil = new Chart(document.getElementById('chart-mileage'), { type: 'line', data: { labels: chartReserves.map((_,i)=>`Cycle ${reserves.length - chartReserves.length + i + 1}`), datasets: [{ data: chartReserves.map(e=>e.mileage||0), borderColor: '#0ea5e9', backgroundColor: 'rgba(14, 165, 233, 0.1)', fill: true, tension: 0.4, pointBackgroundColor: '#0ea5e9', pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { color: 'rgba(255,255,255,0.05)' } } } } });
+  
+  charts.mil = new Chart(document.getElementById('chart-mileage'), {
+    type: 'line',
+    data: {
+      labels: chartReserves.map((_,i) => `${reserves.length - chartReserves.length + i + 1}`),
+      datasets: [
+        { 
+          label: 'Trend', 
+          data: chartReserves.map(e=>e.mileage||0), 
+          borderColor: '#f59e0b', 
+          backgroundColor: 'rgba(245, 158, 11, 0.1)', 
+          fill: true, 
+          tension: 0.4, 
+          pointBackgroundColor: '#f59e0b', 
+          borderWidth: 2, 
+          pointRadius: 3 
+        },
+        {
+          label: 'Avg Till Date',
+          data: chartReserves.map(e => e.cumAvg || 0),
+          borderColor: '#10b981',
+          borderDash: [5, 5],
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.4,
+          fill: false
+        }
+      ]
+    }, 
+    options: { 
+      responsive: true, 
+      maintainAspectRatio: false, 
+      plugins: { 
+          legend: { display: true, labels: { color: 'rgba(255,255,255,0.7)', font: { family: 'Inter', size: 12 } } } 
+      }, 
+      scales: { 
+          y: { grid: { color: 'rgba(255,255,255,0.05)' } }, 
+          x: { 
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              title: { display: true, text: 'Cycles', color: 'rgba(255,255,255,0.5)', font: { weight: 'bold', family: 'Inter' } }
+          } 
+      } 
+    } 
+  });
 }
 
 function renderSpend() {
