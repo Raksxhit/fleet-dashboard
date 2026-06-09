@@ -240,11 +240,20 @@
   .manage-form-container { display: none; padding-top: 16px; border-top: 1px solid var(--border-strong); }
   .manage-form-container.active { display: block; animation: fadeUp 0.3s forwards; }
 
-  /* Subtext styling to ensure it never breaks onto a new line */
+  /* Subtext styling to dynamically scale and fit within the box */
   #reserve-est-subtext {
       white-space: nowrap; 
-      font-size: clamp(10px, 3.5vw, 14px); 
+      font-size: clamp(8px, 2.6vw, 13px);
       letter-spacing: -0.2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+  }
+  
+  @media (max-width: 400px) {
+      #reserve-est-subtext {
+          white-space: normal; /* Allows wrapping on very tiny screens to prevent overflow */
+          line-height: 1.4;
+      }
   }
 
   @media (max-width: 768px) {
@@ -402,7 +411,7 @@
         <div class="section-title"><i class="ti ti-history"></i> Maintenance History</div>
         <div class="table-responsive">
           <table class="log-table">
-            <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Odometer</th><th>Amount</th><th></th></tr></thead>
             <tbody id="spend-log-body"></tbody>
           </table>
         </div>
@@ -536,6 +545,7 @@
     <input type="hidden" id="s-edit-id" value="" />
     <div class="field"><label>Date (DD/MM/YYYY)</label><input type="text" class="date-picker" id="s-date" placeholder="DD/MM/YYYY" maxlength="10" /></div>
     <div class="field"><label>Category</label><select id="s-cat"><option>Service</option><option>Spare part</option><option>Repair</option><option>Tyre</option><option>Insurance</option><option>Other</option></select></div>
+    <div class="field"><label>Odometer (km) - Optional</label><input type="number" id="s-odo" placeholder="e.g. 15000" min="0" /></div>
     <div class="field"><label>Description</label><input type="text" id="s-desc" placeholder="e.g. Brake pad change" /></div>
     <div class="field"><label>Amount (₹)</label><input type="number" id="s-amount" placeholder="e.g. 800" min="0" /></div>
     <button class="modal-action-btn btn-spend" onclick="saveSpend()">Save Record</button>
@@ -837,6 +847,7 @@ function openNewReserveModal() {
 function openNewSpendModal() {
     document.getElementById('s-edit-id').value = '';
     setDateInput('s-date', todayStr);
+    document.getElementById('s-odo').value = ''; 
     document.getElementById('s-desc').value = '';
     document.getElementById('s-amount').value = '';
     openModal('spendModal');
@@ -872,6 +883,7 @@ function editSpend(id) {
         document.getElementById('s-edit-id').value = id;
         setDateInput('s-date', e.date);
         document.getElementById('s-cat').value = e.cat;
+        document.getElementById('s-odo').value = e.odo || ''; 
         document.getElementById('s-desc').value = e.desc;
         document.getElementById('s-amount').value = e.amount;
         openModal('spendModal');
@@ -992,12 +1004,15 @@ function saveSpend() {
   const cat = document.getElementById('s-cat').value; 
   const desc = document.getElementById('s-desc').value.trim(); 
   const amount = parseFloat(document.getElementById('s-amount').value);
+  const odo = parseFloat(document.getElementById('s-odo').value); 
+  
   if (!date || date.length < 8 || !desc || isNaN(amount) || amount < 0) return showToast('Please fill all fields correctly');
+  
   if(editId) {
       const existing = sData().find(e => e.id == editId);
-      if(existing) { existing.date = date; existing.cat = cat; existing.desc = desc; existing.amount = amount; }
+      if(existing) { existing.date = date; existing.cat = cat; existing.odo = isNaN(odo) ? null : odo; existing.desc = desc; existing.amount = amount; }
   } else {
-      sData().push({ date, cat, desc, amount, id: Date.now() + Math.random() });
+      sData().push({ date, cat, desc, odo: isNaN(odo) ? null : odo, amount, id: Date.now() + Math.random() });
   }
   closeModal('spendModal'); refreshUI(); saveLocal(); showToast('Maintenance record saved!', 'success');
 }
@@ -1122,15 +1137,15 @@ function renderFuel() {
           fill: true, 
           tension: 0.4, 
           pointBackgroundColor: '#f59e0b', 
-          borderWidth: 2, 
-          pointRadius: 3 
+          borderWidth: 1.5, 
+          pointRadius: 2 
         },
         {
           label: '5-Cycle Moving Avg',
           data: chartReserves.map(e => e.movAvg || 0),
           borderColor: '#10b981',
           borderDash: [5, 5],
-          borderWidth: 2,
+          borderWidth: 1.5,
           pointRadius: 0,
           tension: 0.4,
           fill: false
@@ -1165,7 +1180,7 @@ function renderSpend() {
     document.getElementById('spend-empty').style.display = 'none';
     tbody.innerHTML = [...arr].sort((a,b)=>utils.parseDate(b.date)-utils.parseDate(a.date)).map((e, i) => {
        const dtStr = e.date.includes('-') ? utils.parseDate(e.date).toLocaleDateString('en-GB') : e.date;
-       return `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${dtStr}</td><td><span class="badge" style="background:rgba(139, 92, 246, 0.15);color:#c4b5fd;border:1px solid rgba(139, 92, 246, 0.3)">${utils.escapeHTML(e.cat)}</span></td><td>${utils.escapeHTML(e.desc)}</td><td>₹${(e.amount||0).toLocaleString('en-IN')}</td><td><div class="action-cell"><button class="edit-btn" onclick="editSpend(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteSpend(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`;
+       return `<tr class="row-animate" style="animation-delay: ${i * 0.03}s"><td>${dtStr}</td><td><span class="badge" style="background:rgba(139, 92, 246, 0.15);color:#c4b5fd;border:1px solid rgba(139, 92, 246, 0.3)">${utils.escapeHTML(e.cat)}</span></td><td>${utils.escapeHTML(e.desc)}</td><td>${e.odo ? e.odo.toLocaleString('en-IN') : '—'}</td><td>₹${(e.amount||0).toLocaleString('en-IN')}</td><td><div class="action-cell"><button class="edit-btn" onclick="editSpend(${e.id})"><i class="ti ti-pencil"></i></button><button class="del-btn" onclick="deleteSpend(${e.id})"><i class="ti ti-trash"></i></button></div></td></tr>`;
     }).join('');
   }
 
@@ -1265,10 +1280,10 @@ function exportData() {
   if(typeof XLSX === 'undefined') return showToast("Excel library loading, please wait...");
   const wb = XLSX.utils.book_new();
   const defaultF = [{ Date: "", Type: "", Odometer: "", Amount: "", Rate: "", Qty: "" }];
-  const defaultS = [{ Date: "", Category: "", Description: "", Amount: "" }];
+  const defaultS = [{ Date: "", Category: "", Description: "", Odometer: "", Amount: "" }];
   const defaultO = [{ Date: "", Odometer: "", Amount: "" }];
   const fExport = fData().length ? fData().map(e => ({ Date: e.date, Type: e.type, Odometer: e.odo||'', Amount: e.amount||'', Rate: e.rate||'', Qty: e.qty||'' })) : defaultF;
-  const sExport = sData().length ? sData().map(e => ({ Date: e.date, Category: e.cat, Description: e.desc, Amount: e.amount })) : defaultS;
+  const sExport = sData().length ? sData().map(e => ({ Date: e.date, Category: e.cat, Description: e.desc, Odometer: e.odo||'', Amount: e.amount })) : defaultS;
   const oExport = oData().length ? oData().map(e => ({ Date: e.date, Odometer: e.odo, Amount: e.amount||'' })) : defaultO;
   
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(fExport), "Fuel_Logs");
@@ -1327,6 +1342,7 @@ function importData(event) {
                  date: String(r.Date).trim(), 
                  cat: String(r.Category).trim(), 
                  desc: r.Description ? String(r.Description).trim() : '', 
+                 odo: safeNum(r.Odometer) || null,
                  amount: safeNum(r.Amount) 
              });
           }
